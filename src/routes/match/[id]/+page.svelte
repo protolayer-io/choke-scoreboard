@@ -3,6 +3,7 @@
 	import { base } from '$app/paths';
 	import { matchesMap } from '$lib/stores.js';
 	import { getF1Score, getF2Score, getLeader, getWinMethod } from '$lib/scoring.js';
+	import { alpha, sanitizeColor } from '$lib/colors.js';
 	import Timer from '../../../components/Timer.svelte';
 	import type { MatchEvent } from '$lib/types.js';
 
@@ -30,8 +31,8 @@
 	let winner = $derived(match && isFinal ? getLeader(match) : 0);
 	let result = $derived(match && isFinal ? getWinMethod(match) : null);
 
-	let f1Color = $derived(match?.f1_color || DEFAULT_F1_COLOR);
-	let f2Color = $derived(match?.f2_color || DEFAULT_F2_COLOR);
+	let f1Color = $derived(sanitizeColor(match?.f1_color, DEFAULT_F1_COLOR));
+	let f2Color = $derived(sanitizeColor(match?.f2_color, DEFAULT_F2_COLOR));
 	let winnerColor = $derived(winner === 1 ? f1Color : winner === 2 ? f2Color : '#ffffff');
 
 	let status = $derived(STATUS_STYLES[match?.status ?? 'waiting']);
@@ -40,18 +41,9 @@
 
 	let isFullscreen = $state(false);
 
-	/** Convert #rrggbb to an rgba() string at the given alpha. */
-	function rgba(hex: string, alpha: number): string {
-		const h = hex.replace('#', '');
-		const r = parseInt(h.slice(0, 2), 16);
-		const g = parseInt(h.slice(2, 4), 16);
-		const b = parseInt(h.slice(4, 6), 16);
-		return `rgba(${r},${g},${b},${alpha})`;
-	}
-
 	/** Diagonal color wash behind a half, fading out toward the center. */
-	function halfBackground(hex: string, angle: number): string {
-		return `linear-gradient(${angle}deg, ${rgba(hex, 0.3)}, ${rgba(hex, 0.05)} 55%, transparent 78%)`;
+	function halfBackground(color: string, angle: number): string {
+		return `linear-gradient(${angle}deg, ${alpha(color, 0.3)}, ${alpha(color, 0.05)} 55%, transparent 78%)`;
 	}
 
 	async function toggleFullscreen(): Promise<void> {
@@ -91,11 +83,11 @@
 		<!-- Edge bars -->
 		<div
 			class="absolute inset-y-0 left-0 w-[11px]"
-			style="background:{f1Color};box-shadow:0 0 50px {rgba(f1Color, 0.6)}"
+			style="background:{f1Color};box-shadow:0 0 50px {alpha(f1Color, 0.6)}"
 		></div>
 		<div
 			class="absolute inset-y-0 right-0 w-[11px]"
-			style="background:{f2Color};box-shadow:0 0 50px {rgba(f2Color, 0.6)}"
+			style="background:{f2Color};box-shadow:0 0 50px {alpha(f2Color, 0.6)}"
 		></div>
 
 		<!-- Fighter 1 (left) -->
@@ -105,7 +97,7 @@
 			<div class="flex w-full min-w-0 items-center justify-center gap-[0.8vw]">
 				<span
 					class="h-[1.7vw] max-h-6 min-h-3 w-[1.7vw] max-w-6 min-w-3 shrink-0 rounded-md"
-					style="background:{f1Color};box-shadow:0 0 20px {rgba(f1Color, 0.6)}"
+					style="background:{f1Color};box-shadow:0 0 20px {alpha(f1Color, 0.6)}"
 				></span>
 				<span
 					class="truncate font-extrabold tracking-wide text-white uppercase"
@@ -119,7 +111,7 @@
 				{#key f1Score}
 					<div
 						class="animate-scorepop font-black text-white"
-						style="font-family:'Archivo',system-ui,sans-serif;font-size:clamp(4rem,13vw,232px);line-height:1;text-shadow:0 0 55px {rgba(f1Color, 0.6)}"
+						style="font-family:'Archivo',system-ui,sans-serif;font-size:clamp(4rem,13vw,232px);line-height:1;text-shadow:0 0 55px {alpha(f1Color, 0.6)}"
 					>
 						{f1Score}
 					</div>
@@ -165,7 +157,7 @@
 			<div class="flex w-full min-w-0 items-center justify-center gap-[0.8vw]">
 				<span
 					class="h-[1.7vw] max-h-6 min-h-3 w-[1.7vw] max-w-6 min-w-3 shrink-0 rounded-md"
-					style="background:{f2Color};box-shadow:0 0 20px {rgba(f2Color, 0.6)}"
+					style="background:{f2Color};box-shadow:0 0 20px {alpha(f2Color, 0.6)}"
 				></span>
 				<span
 					class="truncate font-extrabold tracking-wide text-white uppercase"
@@ -179,7 +171,7 @@
 				{#key f2Score}
 					<div
 						class="animate-scorepop font-black text-white"
-						style="font-family:'Archivo',system-ui,sans-serif;font-size:clamp(4rem,13vw,232px);line-height:1;text-shadow:0 0 55px {rgba(f2Color, 0.6)}"
+						style="font-family:'Archivo',system-ui,sans-serif;font-size:clamp(4rem,13vw,232px);line-height:1;text-shadow:0 0 55px {alpha(f2Color, 0.6)}"
 					>
 						{f2Score}
 					</div>
@@ -231,7 +223,7 @@
 		>
 			<div
 				class="inline-flex items-center gap-2 rounded-full px-[1.2vw] py-[1vh]"
-				style="background:{rgba(statusColor, 0.12)};border:1px solid {rgba(statusColor, 0.5)}"
+				style="background:{alpha(statusColor, 0.12)};border:1px solid {alpha(statusColor, 0.5)}"
 			>
 				<span
 					class="h-3 w-3 shrink-0 rounded-full {isLive ? 'animate-liveblink' : ''}"
@@ -278,14 +270,14 @@
 				{#if winner !== 0}
 					<div
 						class="font-extrabold uppercase"
-						style="color:{winnerColor};font-size:clamp(2rem,6vw,86px);line-height:1;text-shadow:0 0 46px {rgba(winnerColor, 0.6)}"
+						style="color:{winnerColor};font-size:clamp(2rem,6vw,86px);line-height:1;text-shadow:0 0 46px {alpha(winnerColor, 0.6)}"
 					>
 						{winner === 1 ? match.f1_name : match.f2_name}
 					</div>
 				{/if}
 				<div
 					class="rounded-xl px-[1.6vw] py-[1.4vh]"
-					style="background:{rgba(winnerColor, 0.14)};border:1px solid {rgba(winnerColor, 0.5)}"
+					style="background:{alpha(winnerColor, 0.14)};border:1px solid {alpha(winnerColor, 0.5)}"
 				>
 					<span class="font-extrabold tracking-[0.12em]" style="color:{winnerColor};font-size:clamp(1rem,1.7vw,32px)">
 						{result.method}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { MatchEvent, ViewMode } from '$lib/types.js';
 	import { getF1Score, getF2Score, getLeader } from '$lib/scoring.js';
+	import { sanitizeColor } from '$lib/colors.js';
 	import StatusBadge from './StatusBadge.svelte';
 	import Timer from './Timer.svelte';
 	import { base } from '$app/paths';
@@ -20,8 +21,8 @@
 	let isFinished = $derived(match.status === 'finished');
 	let isBroadcast = $derived(mode === 'broadcast');
 
-	let f1Color = $derived(match.f1_color || '#2563eb');
-	let f2Color = $derived(match.f2_color || '#dc2626');
+	let f1Color = $derived(sanitizeColor(match.f1_color, '#2563eb'));
+	let f2Color = $derived(sanitizeColor(match.f2_color, '#dc2626'));
 </script>
 
 <a
