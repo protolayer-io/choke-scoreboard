@@ -2,18 +2,30 @@
 	import PubkeyInput from '../components/PubkeyInput.svelte';
 	import MatchCard from '../components/MatchCard.svelte';
 	import { matchesMap, viewMode, isLoading, activePubkey, getSortedMatches } from '$lib/stores.js';
+	import { MATCH_AGE_CHECK_INTERVAL_MS } from '$lib/constants.js';
 	import type { MatchEvent, ViewMode } from '$lib/types.js';
 
-	let matches = $state<MatchEvent[]>([]);
+	let allMatches = $state<Map<string, MatchEvent>>(new Map());
+	let nowSeconds = $state(Math.floor(Date.now() / 1000));
 	let loading = $state(false);
 	let connected = $state(false);
 	let currentViewMode = $state<ViewMode>('compact');
 
+	let matches = $derived(getSortedMatches(allMatches, nowSeconds));
+
 	$effect(() => {
 		const unsub = matchesMap.subscribe((map) => {
-			matches = getSortedMatches(map);
+			allMatches = map;
 		});
 		return unsub;
+	});
+
+	// Advance the clock so matches drop off the list once they pass the age limit
+	$effect(() => {
+		const id = setInterval(() => {
+			nowSeconds = Math.floor(Date.now() / 1000);
+		}, MATCH_AGE_CHECK_INTERVAL_MS);
+		return () => clearInterval(id);
 	});
 
 	$effect(() => {

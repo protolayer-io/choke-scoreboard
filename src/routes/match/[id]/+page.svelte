@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-	import { matchesMap } from '$lib/stores.js';
+	import { matchesMap, isMatchFresh } from '$lib/stores.js';
+	import { MATCH_AGE_CHECK_INTERVAL_MS } from '$lib/constants.js';
 	import { getF1Score, getF2Score, getLeader, getWinMethod } from '$lib/scoring.js';
 	import { alpha, sanitizeColor } from '$lib/colors.js';
 	import Timer from '../../../components/Timer.svelte';
@@ -18,7 +19,21 @@
 	} as const;
 
 	let matchId = $derived($page.params.id ?? '');
-	let match = $derived<MatchEvent | undefined>($matchesMap.get(matchId));
+	let nowSeconds = $state(Math.floor(Date.now() / 1000));
+
+	// Advance the clock so a match open in this view expires once it ages out,
+	// instead of lingering here after the list has dropped it.
+	$effect(() => {
+		const id = setInterval(() => {
+			nowSeconds = Math.floor(Date.now() / 1000);
+		}, MATCH_AGE_CHECK_INTERVAL_MS);
+		return () => clearInterval(id);
+	});
+
+	let stored = $derived<MatchEvent | undefined>($matchesMap.get(matchId));
+	let match = $derived<MatchEvent | undefined>(
+		isMatchFresh(stored, nowSeconds) ? stored : undefined
+	);
 
 	let f1Score = $derived(match ? getF1Score(match) : 0);
 	let f2Score = $derived(match ? getF2Score(match) : 0);
