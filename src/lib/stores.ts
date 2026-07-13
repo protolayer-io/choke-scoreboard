@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import type { MatchEvent, ViewMode } from './types.js';
+import { MATCH_MAX_AGE_SECONDS } from './constants.js';
 
 const STORAGE_KEY_PUBKEY = 'choke:organizer-pubkey';
 const STORAGE_KEY_THEME = 'choke:theme';
@@ -63,9 +64,17 @@ export function clearMatches(): void {
 	matchesMap.set(new Map());
 }
 
-/** Get sorted matches array (in-progress first, then by created_at desc) */
-export function getSortedMatches(map: Map<string, MatchEvent>): MatchEvent[] {
-	const arr = Array.from(map.values());
+/**
+ * Get sorted matches array (in-progress first, then by created_at desc).
+ * Matches older than MATCH_MAX_AGE_SECONDS are excluded, so they drop off the
+ * list as they age even while the page stays open.
+ */
+export function getSortedMatches(
+	map: Map<string, MatchEvent>,
+	nowSeconds: number = Math.floor(Date.now() / 1000)
+): MatchEvent[] {
+	const cutoff = nowSeconds - MATCH_MAX_AGE_SECONDS;
+	const arr = Array.from(map.values()).filter((m) => (m.created_at ?? 0) >= cutoff);
 
 	const statusOrder: Record<string, number> = {
 		'in-progress': 0,

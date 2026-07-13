@@ -2,6 +2,7 @@ import { SimplePool } from 'nostr-tools/pool';
 import { nip19 } from 'nostr-tools';
 import type { MatchEvent, MatchStatus } from './types.js';
 import { upsertMatch, isLoading } from './stores.js';
+import { MATCH_MAX_AGE_SECONDS } from './constants.js';
 import type { SubCloser } from 'nostr-tools/abstract-pool';
 
 /** BJJ Match event kind (parameterized replaceable) */
@@ -110,7 +111,7 @@ export function subscribeToMatches(pubkeyHex: string): void {
 	pool = new SimplePool();
 	isLoading.set(true);
 
-	const since = Math.floor(Date.now() / 1000) - 86400; // last 24h
+	const since = Math.floor(Date.now() / 1000) - MATCH_MAX_AGE_SECONDS;
 
 	const sub = pool.subscribeMany(
 		DEFAULT_RELAYS,
@@ -122,6 +123,9 @@ export function subscribeToMatches(pubkeyHex: string): void {
 		},
 		{
 			onevent(event) {
+				// Relays may ignore `since`, so enforce the window client-side too
+				if (event.created_at < since) return;
+
 				const match = parseMatchEvent(event);
 				if (match) {
 					upsertMatch(match);
