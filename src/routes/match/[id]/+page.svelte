@@ -3,7 +3,12 @@
 	import { base } from '$app/paths';
 	import { matchesMap, isMatchFresh } from '$lib/stores.js';
 	import { MATCH_AGE_CHECK_INTERVAL_MS } from '$lib/constants.js';
-	import { getF1Score, getF2Score, getLeader, getWinMethod } from '$lib/scoring.js';
+	import {
+		getF1EffectivePoints,
+		getF2EffectivePoints,
+		getWinMethod,
+		getWinner
+	} from '$lib/scoring.js';
 	import { alpha, sanitizeColor } from '$lib/colors.js';
 	import Timer from '../../../components/Timer.svelte';
 	import type { MatchEvent } from '$lib/types.js';
@@ -35,15 +40,22 @@
 		isMatchFresh(stored, nowSeconds) ? stored : undefined
 	);
 
-	let f1Score = $derived(match ? getF1Score(match) : 0);
-	let f2Score = $derived(match ? getF2Score(match) : 0);
+	// Effective: a penalty against the opponent has already become points.
+	let f1Score = $derived(match ? getF1EffectivePoints(match) : 0);
+	let f2Score = $derived(match ? getF2EffectivePoints(match) : 0);
 
 	let isLive = $derived(match?.status === 'in-progress');
 	let isFinal = $derived(match?.status === 'finished');
 	let showTimer = $derived(match?.status === 'waiting' || isLive);
 
-	/** 1 = fighter 1 won, 2 = fighter 2 won, 0 = draw or not finished. */
-	let winner = $derived(match && isFinal ? getLeader(match) : 0);
+	/**
+	 * 1 = fighter 1 won, 2 = fighter 2 won, 0 = draw or not finished.
+	 *
+	 * Read from the event, never derived from the numbers: a fighter can lead
+	 * 4–0 and lose to an armbar, and this page would otherwise announce the
+	 * loser — on a wall, in a room full of people.
+	 */
+	let winner = $derived(match ? getWinner(match) : 0);
 	let result = $derived(match && isFinal ? getWinMethod(match) : null);
 
 	let f1Color = $derived(sanitizeColor(match?.f1_color, DEFAULT_F1_COLOR));

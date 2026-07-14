@@ -53,6 +53,59 @@ export function getDebugMatches(): MatchEvent[] {
 			pubkey: 'debug'
 		},
 		{
+			// The case this whole feature exists for: Bob leads 4–0 and *loses*.
+			// A scoreboard that derives the winner from the numbers announces Bob,
+			// on points, on a wall, in a room full of people.
+			id: 'debug-sub',
+			status: 'finished',
+			start_at: now - 400,
+			duration: 300,
+			f1_name: 'Bob',
+			f2_name: 'Carlos',
+			f1_color: '#2563eb',
+			f2_color: '#dc2626',
+			f1_pt2: 0,
+			f2_pt2: 0,
+			f1_pt3: 0,
+			f2_pt3: 0,
+			f1_pt4: 1,
+			f2_pt4: 0,
+			f1_adv: 0,
+			f2_adv: 0,
+			f1_pen: 0,
+			f2_pen: 0,
+			winner: 'f2',
+			method: 'submission',
+			submission: 'armbar',
+			ended_at: now - 220,
+			created_at: now - 220,
+			pubkey: 'debug'
+		},
+		{
+			// A third penalty concedes two points: 2 scored + 2 conceded = 4.
+			// The old scoreboard showed 2, and broke ties "on fewer penalties".
+			id: 'debug-pen',
+			status: 'in-progress',
+			start_at: now - 90,
+			duration: 300,
+			f1_name: 'Mica Galvão',
+			f2_name: 'Diogo Reis',
+			f1_color: '#2563eb',
+			f2_color: '#dc2626',
+			f1_pt2: 1,
+			f2_pt2: 1,
+			f1_pt3: 0,
+			f2_pt3: 0,
+			f1_pt4: 0,
+			f2_pt4: 0,
+			f1_adv: 0,
+			f2_adv: 0,
+			f1_pen: 0,
+			f2_pen: 3,
+			created_at: now - 5,
+			pubkey: 'debug'
+		},
+		{
 			id: 'debug-3',
 			status: 'in-progress',
 			start_at: now - 120, // started 2 min ago

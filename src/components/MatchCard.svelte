@@ -1,6 +1,14 @@
 <script lang="ts">
 	import type { MatchEvent, ViewMode } from '$lib/types.js';
-	import { getF1Score, getF2Score, getLeader } from '$lib/scoring.js';
+	import {
+		getF1EffectiveAdvantages,
+		getF1EffectivePoints,
+		getF2EffectiveAdvantages,
+		getF2EffectivePoints,
+		getLeader,
+		getWinMethod,
+		getWinner
+	} from '$lib/scoring.js';
 	import { sanitizeColor } from '$lib/colors.js';
 	import StatusBadge from './StatusBadge.svelte';
 	import Timer from './Timer.svelte';
@@ -13,9 +21,21 @@
 
 	let { match, mode }: Props = $props();
 
-	let f1Score = $derived(getF1Score(match));
-	let f2Score = $derived(getF2Score(match));
-	let leader = $derived(getLeader(match));
+	// The effective score: a penalty against the opponent has already become
+	// points, and this is what the referee's own screen shows.
+	let f1Score = $derived(getF1EffectivePoints(match));
+	let f2Score = $derived(getF2EffectivePoints(match));
+	let f1Adv = $derived(getF1EffectiveAdvantages(match));
+	let f2Adv = $derived(getF2EffectiveAdvantages(match));
+
+	// Who to light up. A finished match names its winner, and that name is the
+	// only thing worth believing: a fighter can lead 4–0 and lose to an armbar,
+	// and every number on this card will still favour the loser. Only an
+	// undecided match lets the scoreboard speak for itself.
+	let leader = $derived(
+		match.status === 'finished' ? getWinner(match) : getLeader(match)
+	);
+	let outcome = $derived(match.method ? getWinMethod(match) : null);
 	let isCanceled = $derived(match.status === 'canceled');
 	let isLive = $derived(match.status === 'in-progress');
 	let isFinished = $derived(match.status === 'finished');
@@ -60,9 +80,9 @@
 			</div>
 			<!-- Adv & Pen -->
 			<div class="mt-1 flex justify-center gap-2 text-xs font-medium">
-				{#if match.f1_adv > 0}
+				{#if f1Adv > 0}
 					<span class="rounded px-1.5 py-0.5" style="background-color: var(--color-gold, #F5B800); color: #000;">
-						A {match.f1_adv}
+						A {f1Adv}
 					</span>
 				{/if}
 				{#if match.f1_pen > 0}
@@ -100,9 +120,9 @@
 			</div>
 			<!-- Adv & Pen -->
 			<div class="mt-1 flex justify-center gap-2 text-xs font-medium">
-				{#if match.f2_adv > 0}
+				{#if f2Adv > 0}
 					<span class="rounded px-1.5 py-0.5" style="background-color: var(--color-gold, #F5B800); color: #000;">
-						A {match.f2_adv}
+						A {f2Adv}
 					</span>
 				{/if}
 				{#if match.f2_pen > 0}
@@ -113,6 +133,19 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- How it ended. The score row above cannot say: a match won by submission
+	     shows the loser's numbers as the bigger ones. -->
+	{#if outcome}
+		<div class="border-t px-6 py-2 text-center" style="border-color: var(--border-color);">
+			<span class="text-xs font-bold tracking-wide" style="color: var(--color-gold, #F5B800);">
+				{outcome.method}
+			</span>
+			<span class="ml-2 text-xs" style="color: var(--text-secondary);">
+				{outcome.detail}
+			</span>
+		</div>
+	{/if}
 
 	<!-- Point breakdown (broadcast mode) -->
 	{#if isBroadcast}
