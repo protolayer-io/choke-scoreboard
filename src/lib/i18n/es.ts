@@ -1,4 +1,4 @@
-import type { Catalog } from './index.js';
+import { defineCatalog } from './index.js';
 import { plural } from './plural.js';
 
 /**
@@ -8,7 +8,7 @@ import { plural } from './plural.js';
  * out of a plural, and cannot lose a fighter from a match title: it stops
  * compiling. That is the only reason a second language is safe to add at all.
  */
-export const es: Catalog = {
+export const es = defineCatalog({
 	// ─── Chrome ─────────────────────────────────────────────────────────────
 	'app.name': 'Choke Scoreboard',
 	'app.description': 'Puntuación de jiu-jitsu brasileño en tiempo real vía Nostr',
@@ -125,10 +125,11 @@ export const es: Catalog = {
 
 	// ─── Errores ────────────────────────────────────────────────────────────
 	'error.pageNotFound': 'Página no encontrada',
+	'error.somethingWrong': 'Algo salió mal',
 	'error.backToScoreboard': 'Volver al tablero',
 
 	// ─── Títulos ────────────────────────────────────────────────────────────
 	'title.home': '🥋 Choke Scoreboard',
 	'title.match': (f1: string, f2: string) => `${f1} vs ${f2} — Choke Scoreboard`,
 	'title.matchFallback': 'Lucha — Choke Scoreboard'
-};
+});
