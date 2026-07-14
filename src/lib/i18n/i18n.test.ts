@@ -242,4 +242,14 @@ describe('speaking Portuguese', () => {
 		expect(get(t)('home.matchCount', 1)).toBe('1 luta');
 		expect(get(t)('home.matchCount', 4)).toBe('4 lutas');
 	});
+
+	it('says zero in the plural, whatever CLDR thinks', () => {
+		// Intl.PluralRules('pt').select(0) is `one` — CLDR files Portuguese zero
+		// under the singular (i = 0..1). No Brazilian gym writes `0 luta`, and this
+		// is the DEFAULT screen: an organizer connects, and before a single match
+		// arrives the board counts what it has.
+		locale.set('pt');
+
+		expect(get(t)('home.matchCount', 0)).toBe('0 lutas');
+	});
 });

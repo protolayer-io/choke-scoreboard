@@ -34,8 +34,13 @@ export const pt = defineCatalog({
 	'pubkey.error.invalidPubkey': 'Chave pública inválida: precisa ser npub ou hex de 64 caracteres',
 
 	// ─── Lista de lutas ─────────────────────────────────────────────────────
+	// `zero` is spelled out because CLDR will not: it files Portuguese zero under
+	// the singular (i = 0..1), so Intl on its own prints `0 luta`. And this is the
+	// DEFAULT screen — an organizer connects, and before the first match arrives
+	// the board counts what it has.
 	'home.matchCount': (count: number) =>
 		plural('pt', count, {
+			zero: `${count} lutas`,
 			one: `${count} luta`,
 			other: `${count} lutas`
 		}),
