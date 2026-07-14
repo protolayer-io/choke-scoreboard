@@ -107,8 +107,11 @@ export function getDebugMatches(): MatchEvent[] {
 		},
 		{
 			id: 'debug-3',
+			// Paused: still in-progress, with the clock stopped 90s in. The board
+			// must show 3:30 and hold it, not drain time like the two above.
 			status: 'in-progress',
 			start_at: now - 120, // started 2 min ago
+			paused_at: now - 30, // referee stopped the clock 30s ago
 			duration: 300,
 			f1_name: 'Leandro Lo',
 			f2_name: 'Lucas Lepri',

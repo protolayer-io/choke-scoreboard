@@ -7,7 +7,8 @@
 		getF2EffectivePoints,
 		getLeader,
 		getWinMethod,
-		getWinner
+		getWinner,
+		isMatchPaused
 	} from '$lib/scoring.js';
 	import { sanitizeColor } from '$lib/colors.js';
 	import StatusBadge from './StatusBadge.svelte';
@@ -38,6 +39,7 @@
 	let outcome = $derived(match.method ? getWinMethod(match) : null);
 	let isCanceled = $derived(match.status === 'canceled');
 	let isLive = $derived(match.status === 'in-progress');
+	let isPaused = $derived(isMatchPaused(match));
 	let isFinished = $derived(match.status === 'finished');
 	let isBroadcast = $derived(mode === 'broadcast');
 
@@ -52,7 +54,7 @@
 >
 	<!-- Status & Timer Row -->
 	<div class="flex items-center justify-between px-4 pt-3 {isBroadcast ? 'px-6 pt-4' : ''}">
-		<StatusBadge status={match.status} />
+		<StatusBadge status={match.status} paused={isPaused} />
 		<Timer {match} />
 	</div>
 

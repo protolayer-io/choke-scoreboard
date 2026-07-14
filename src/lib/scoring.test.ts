@@ -1,14 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	getF1EffectiveAdvantages,
 	getF1EffectivePoints,
 	getF2EffectivePoints,
 	getLeader,
+	getRemainingSeconds,
 	getWinMethod,
 	getWinner,
 	getWinnerName,
-	isLegacyResult
+	isLegacyResult,
+	isMatchPaused,
+	isTimerWarning
 } from './scoring.js';
 import type { MatchEvent } from './types.js';
 
@@ -56,12 +59,14 @@ describe('the winner the event names', () => {
 			submission: 'armbar'
 		});
 
-		// Assert — every number here favours Bob, and Carlos won
+		// Assert — every number here favours Bob, and Carlos won. The event carries
+		// the canonical id; the wall reads the name.
 		expect(getF1EffectivePoints(m)).toBe(4);
 		expect(getF2EffectivePoints(m)).toBe(0);
 		expect(getWinner(m)).toBe(2);
 		expect(getWinnerName(m)).toBe('Carlos');
-		expect(getWinMethod(m)).toEqual({ method: 'SUBMISSION', detail: 'armbar' });
+		expect(m.submission).toBe('armbar');
+		expect(getWinMethod(m)).toEqual({ method: 'SUBMISSION', detail: 'Armbar' });
 	});
 
 	it('beats the scoreboard on a disqualification', () => {
@@ -92,6 +97,26 @@ describe('the winner the event names', () => {
 
 	it('names nobody while the match is still running', () => {
 		expect(getWinner(match({ status: 'in-progress', f1_pt2: 1 }))).toBe(0);
+	});
+
+	it('reads the technique out loud, not its id', () => {
+		// Arrange — the referee's app publishes canonical ids, so a Brazilian
+		// tapping "chave de braço" and a Japanese referee tapping 腕十字固め produce
+		// the SAME event. That is what makes counting armbars across a tournament
+		// mean anything.
+		const m = match({ winner: 'f2', method: 'submission', submission: 'rear_naked_choke' });
+
+		// Assert — and it is exactly why this board must not print the id. The wall
+		// is the one place a raw value gets read by a room full of people.
+		expect(getWinMethod(m)).toEqual({ method: 'SUBMISSION', detail: 'Rear naked choke' });
+	});
+
+	it('prints a technique it has never heard of exactly as written', () => {
+		// The field is free text on purpose. A board that blanked on a baratoplata
+		// would be hiding the most interesting thing that happened all day.
+		const m = match({ winner: 'f2', method: 'submission', submission: 'baratoplata' });
+
+		expect(getWinMethod(m).detail).toBe('baratoplata');
 	});
 
 	it('reports a submission with no technique recorded', () => {
@@ -209,5 +234,78 @@ describe('legacy events are not re-refereed', () => {
 
 		expect(isLegacyResult(live)).toBe(false);
 		expect(getF1EffectivePoints(live)).toBe(2);
+	});
+});
+
+/**
+ * A paused match is still `in-progress` — the referee's app only adds
+ * `paused_at`. Read that as the clock: while it is set the match is not being
+ * fought, and a wall showing time still draining is showing a lie the whole
+ * room can check against the referee standing still.
+ */
+describe('the clock while the referee has it stopped', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	/** Pretend the wall clock reads `seconds` unix seconds. */
+	function nowIs(seconds: number): void {
+		vi.useFakeTimers();
+		vi.setSystemTime(seconds * 1000);
+	}
+
+	it('freezes at the second the referee paused, not at now', () => {
+		// Arrange — started at :000, paused 97s in, and a further minute of real
+		// time has passed with the fighters standing still
+		nowIs(1700000160);
+		const m = match({ status: 'in-progress', start_at: 1700000000, paused_at: 1700000097 });
+
+		// Act
+		const remaining = getRemainingSeconds(m);
+
+		// Assert — 300 − 97, and not 300 − 160
+		expect(isMatchPaused(m)).toBe(true);
+		expect(remaining).toBe(203);
+	});
+
+	it('does not drain while the pause holds', () => {
+		nowIs(1700000160);
+		const m = match({ status: 'in-progress', start_at: 1700000000, paused_at: 1700000097 });
+		const first = getRemainingSeconds(m);
+
+		// Act — ten more seconds of real time, same event
+		nowIs(1700000170);
+
+		// Assert
+		expect(getRemainingSeconds(m)).toBe(first);
+	});
+
+	it('runs against the wall clock again once the pause is gone', () => {
+		// Arrange — the app republishes without paused_at when it resumes
+		nowIs(1700000160);
+		const m = match({ status: 'in-progress', start_at: 1700000000 });
+
+		// Assert
+		expect(isMatchPaused(m)).toBe(false);
+		expect(getRemainingSeconds(m)).toBe(140);
+	});
+
+	it('warns from the frozen clock, not the running one', () => {
+		// Arrange — paused with 20s left, and real time is long past the end
+		nowIs(1700000400);
+		const m = match({ status: 'in-progress', start_at: 1700000000, paused_at: 1700000280 });
+
+		// Assert — 20s left is the warning zone; read at now it would be expired
+		expect(getRemainingSeconds(m)).toBe(20);
+		expect(isTimerWarning(m)).toBe(true);
+	});
+
+	it('never counts a match that is not running as paused', () => {
+		// Arrange — a stale paused_at riding along on a finished event
+		const over = match({ status: 'finished', paused_at: 1700000097 });
+
+		// Assert — status governs; a finished match is over, not on hold
+		expect(isMatchPaused(over)).toBe(false);
+		expect(getRemainingSeconds(over)).toBe(0);
 	});
 });

@@ -134,6 +134,46 @@ const METHOD_LABELS: Record<MatchMethod, string> = {
 	draw: 'DRAW'
 };
 
+/**
+ * The submission ids the referee's app publishes, and what a human reads.
+ *
+ * The app is translated and the data is not: a referee taps *chave de braço* in
+ * São Paulo and 腕十字固め in Tokyo, and both events say `armbar`. That is what
+ * makes counting armbars across a tournament mean anything — and it is why this
+ * board must not print the id. `rear_naked_choke` on a wall is a bug.
+ *
+ * See choke/docs/SPEC.md § Submission ids.
+ */
+const SUBMISSION_LABELS: Record<string, string> = {
+	armbar: 'Armbar',
+	rear_naked_choke: 'Rear naked choke',
+	triangle: 'Triangle choke',
+	guillotine: 'Guillotine',
+	kimura: 'Kimura',
+	americana: 'Americana',
+	cross_collar_choke: 'Cross collar choke',
+	bow_and_arrow: 'Bow and arrow choke',
+	ezekiel: 'Ezekiel choke',
+	omoplata: 'Omoplata',
+	arm_triangle: 'Arm triangle',
+	north_south_choke: 'North–south choke',
+	straight_ankle_lock: 'Straight ankle lock',
+	heel_hook: 'Heel hook',
+	toe_hold: 'Toe hold'
+};
+
+/**
+ * A submission's name, for a wall.
+ *
+ * A technique we do not know comes back **exactly as the referee typed it**. It
+ * has to: the field is free text on purpose, because BJJ invents submissions
+ * faster than any list can hold them, and a board that blanked on a baratoplata
+ * would be hiding the most interesting thing that happened all day.
+ */
+export function submissionLabel(submission: string): string {
+	return SUBMISSION_LABELS[submission] ?? submission;
+}
+
 const DQ_LABELS: Record<DqReason, string> = {
 	accumulated_penalties: 'four penalties',
 	technical_foul: 'technical foul',
@@ -178,7 +218,7 @@ export function getWinMethod(match: MatchEvent): { method: string; detail: strin
 function describeMethod(match: MatchEvent, method: MatchMethod, scoreLine: string): string {
 	switch (method) {
 		case 'submission':
-			return match.submission ? match.submission : 'Submitted';
+			return match.submission ? submissionLabel(match.submission) : 'Submitted';
 		case 'points':
 			return scoreLine;
 		case 'advantages':
@@ -204,15 +244,28 @@ export function getWinnerName(match: MatchEvent): string | null {
 }
 
 /**
+ * Whether the referee has the clock stopped.
+ *
+ * A paused match is still `in-progress`, so the status alone cannot say it:
+ * only `paused_at` can. It means nothing on a match that is not running.
+ */
+export function isMatchPaused(match: MatchEvent): boolean {
+	return match.status === 'in-progress' && typeof match.paused_at === 'number' && match.paused_at > 0;
+}
+
+/**
  * Calculate remaining time in seconds for an in-progress match.
  * Returns 0 if time has expired.
+ *
+ * While the match is paused the clock is read at `paused_at` rather than at
+ * now, so the wall shows the time the referee stopped it at.
  */
 export function getRemainingSeconds(match: MatchEvent): number {
 	if (match.status !== 'in-progress' || !match.start_at) return 0;
 
-	const now = Math.floor(Date.now() / 1000);
+	const clock = isMatchPaused(match) ? (match.paused_at as number) : Math.floor(Date.now() / 1000);
 	const endTime = match.start_at + match.duration;
-	const remaining = endTime - now;
+	const remaining = endTime - clock;
 
 	return Math.max(0, remaining);
 }

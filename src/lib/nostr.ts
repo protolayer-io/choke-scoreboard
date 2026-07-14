@@ -131,6 +131,12 @@ function parseMatchEvent(event: {
 			id: matchId,
 			status,
 			start_at: data.start_at ? Number(data.start_at) : undefined,
+
+			// The pause. A paused match is still 'in-progress' and carries nothing
+			// else to say so, so dropping this field here leaves the board draining
+			// time in front of a referee standing still — however right the clock
+			// arithmetic downstream is.
+			paused_at: data.paused_at ? Number(data.paused_at) : undefined,
 			duration: Number(data.duration) || 300,
 			f1_name: String(data.f1_name || 'Fighter 1'),
 			f2_name: String(data.f2_name || 'Fighter 2'),

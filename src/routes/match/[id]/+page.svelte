@@ -9,7 +9,8 @@
 		getF2EffectiveAdvantages,
 		getF2EffectivePoints,
 		getWinMethod,
-		getWinner
+		getWinner,
+		isMatchPaused
 	} from '$lib/scoring.js';
 	import { alpha, sanitizeColor } from '$lib/colors.js';
 	import Timer from '../../../components/Timer.svelte';
@@ -24,6 +25,9 @@
 		finished: { label: 'FINAL', color: '#ffffff', dot: '#ffffff' },
 		canceled: { label: 'CANCELED', color: '#f87171', dot: '#ef4444' }
 	} as const;
+
+	/** A paused match is still 'in-progress', so it has no status of its own to style. */
+	const PAUSED_STYLE = { label: 'PAUSED', color: '#f5b800', dot: '#f5b800' } as const;
 
 	let matchId = $derived($page.params.id ?? '');
 	let nowSeconds = $state(Math.floor(Date.now() / 1000));
@@ -51,6 +55,7 @@
 	let f2Adv = $derived(match ? getF2EffectiveAdvantages(match) : 0);
 
 	let isLive = $derived(match?.status === 'in-progress');
+	let isPaused = $derived(match ? isMatchPaused(match) : false);
 	let isFinal = $derived(match?.status === 'finished');
 	let showTimer = $derived(match?.status === 'waiting' || isLive);
 
@@ -68,7 +73,9 @@
 	let f2Color = $derived(sanitizeColor(match?.f2_color, DEFAULT_F2_COLOR));
 	let winnerColor = $derived(winner === 1 ? f1Color : winner === 2 ? f2Color : '#ffffff');
 
-	let status = $derived(STATUS_STYLES[match?.status ?? 'waiting']);
+	let status = $derived(
+		isPaused ? PAUSED_STYLE : STATUS_STYLES[match?.status ?? 'waiting']
+	);
 	let statusColor = $derived(isFinal ? winnerColor : status.color);
 	let statusDot = $derived(isFinal ? winnerColor : status.dot);
 
@@ -259,7 +266,7 @@
 				style="background:{alpha(statusColor, 0.12)};border:1px solid {alpha(statusColor, 0.5)}"
 			>
 				<span
-					class="h-3 w-3 shrink-0 rounded-full {isLive ? 'animate-liveblink' : ''}"
+					class="h-3 w-3 shrink-0 rounded-full {isLive && !isPaused ? 'animate-liveblink' : ''}"
 					style="background:{statusDot};box-shadow:0 0 14px {statusDot}"
 				></span>
 				<span

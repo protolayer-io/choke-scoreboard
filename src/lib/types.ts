@@ -13,6 +13,15 @@ export interface MatchEvent {
 	status: MatchStatus;
 	/** Unix timestamp (seconds) when the match started */
 	start_at?: number;
+	/**
+	 * Unix seconds at which the referee stopped the clock; absent while running.
+	 *
+	 * A paused match is still `in-progress` — the app adds this field and changes
+	 * nothing else — so this, not `status`, is the only thing that says the clock
+	 * has stopped. Ignore it and the wall keeps draining time in front of a room
+	 * that can see the referee standing still.
+	 */
+	paused_at?: number;
 	/** Match duration in seconds (default 300 = 5 minutes) */
 	duration: number;
 	/** Fighter 1 display name */

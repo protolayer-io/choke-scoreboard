@@ -3,12 +3,22 @@
 
 	interface Props {
 		status: MatchStatus;
+		/** Whether the referee has the clock stopped. A paused match is still 'in-progress'. */
+		paused?: boolean;
 	}
 
-	let { status }: Props = $props();
+	let { status, paused = false }: Props = $props();
 </script>
 
-{#if status === 'waiting'}
+{#if status === 'in-progress' && paused}
+	<span class="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-400">
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+			<rect x="6" y="5" width="4" height="14" rx="1" />
+			<rect x="14" y="5" width="4" height="14" rx="1" />
+		</svg>
+		PAUSED
+	</span>
+{:else if status === 'waiting'}
 	<span class="inline-flex items-center gap-1 rounded-full bg-gray-500/20 px-2.5 py-0.5 text-xs font-medium text-gray-400">
 		<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 			<circle cx="12" cy="12" r="10" />

@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { __parseMatchEventForTests as parseMatchEvent } from './nostr.js';
-import { getWinner, getWinnerName, isLegacyResult } from './scoring.js';
+import {
+	getRemainingSeconds,
+	getWinner,
+	getWinnerName,
+	isLegacyResult,
+	isMatchPaused
+} from './scoring.js';
 
 /**
  * The gap that made every other test in this project a lie.
@@ -116,5 +122,37 @@ describe('parsing an outcome off the wire', () => {
 		)!;
 
 		expect(parsed.submission).toBeUndefined();
+	});
+});
+
+describe('parsing a pause off the wire', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('carries paused_at through, so the board can stop the clock', () => {
+		// Arrange — exactly what the referee's app publishes on pause: the status
+		// stays in-progress, and only paused_at appears
+		vi.useFakeTimers();
+		vi.setSystemTime(1700000160 * 1000);
+
+		// Act
+		const parsed = parseMatchEvent(
+			event({ status: 'in-progress', start_at: 1700000000, paused_at: 1700000097 })
+		)!;
+
+		// Assert — dropping the field here is the whole bug: the clock arithmetic
+		// would be right and the wall would drain time anyway, because the pause
+		// never reached it
+		expect(parsed.paused_at).toBe(1700000097);
+		expect(isMatchPaused(parsed)).toBe(true);
+		expect(getRemainingSeconds(parsed)).toBe(203);
+	});
+
+	it('leaves a running match with no pause on it', () => {
+		const parsed = parseMatchEvent(event({ status: 'in-progress', start_at: 1700000000 }))!;
+
+		expect(parsed.paused_at).toBeUndefined();
+		expect(isMatchPaused(parsed)).toBe(false);
 	});
 });
