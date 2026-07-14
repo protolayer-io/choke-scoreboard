@@ -253,3 +253,64 @@ describe('speaking Portuguese', () => {
 		expect(get(t)('home.matchCount', 0)).toBe('0 lutas');
 	});
 });
+
+/**
+ * The wall has a width, and a translator cannot see it.
+ *
+ * Some of these messages sit in a fixed pill on a broadcast screen read from
+ * across a gym, or under a number in a column three of them share. A word that
+ * is merely *long* does not fail a type check, does not fail a build, and does
+ * not fail a test — it just quietly runs under the fighters' names in a room
+ * full of people. So the budget is a test.
+ *
+ * The numbers are the widest word already shipping, plus a little air. If a
+ * language genuinely needs more room than this, the layout is what has to
+ * change — and this test is how that conversation starts, instead of a
+ * photograph of a broken wall arriving after the tournament.
+ */
+describe('the words fit on the wall', () => {
+	afterEach(() => {
+		locale.set('en');
+	});
+
+	/** key prefix → how many characters the layout can actually hold. */
+	const BUDGETS: Array<{ prefix: string; max: number; where: string }> = [
+		{ prefix: 'status.', max: 12, where: 'the status pill on the broadcast wall' },
+		{ prefix: 'method.', max: 18, where: 'the winner banner' },
+		{ prefix: 'score.pt', max: 6, where: 'the point breakdown, three across' }
+	];
+
+	/** The abbreviations, which sit beside a number and have nowhere to grow. */
+	const ABBREVIATIONS: Record<string, { max: number; where: string }> = {
+		'score.advantageShort': { max: 2, where: 'the advantage chip on a card' },
+		'score.penaltyShort': { max: 2, where: 'the penalty chip on a card' },
+		'score.advantages': { max: 5, where: 'the ADV pill on the broadcast wall' },
+		'score.penalties': { max: 5, where: 'the PEN pill on the broadcast wall' }
+	};
+
+	for (const code of LOCALES) {
+		it(`keeps ${code} inside the layout`, () => {
+			locale.set(code);
+			const say = get(t);
+			const tooLong: string[] = [];
+
+			for (const key of Object.keys(en) as MessageKey[]) {
+				const budget = Object.hasOwn(ABBREVIATIONS, key)
+					? ABBREVIATIONS[key]
+					: BUDGETS.find((b) => key.startsWith(b.prefix));
+				if (!budget) continue;
+
+				const word = say(key as 'status.live');
+				if (word.length > budget.max) {
+					// The failure names the place, not just the number: whoever reads it
+					// has to go and look at that part of the screen.
+					tooLong.push(
+						`${key} = "${word}" is ${word.length} chars; ${budget.where} holds ${budget.max}`
+					);
+				}
+			}
+
+			expect(tooLong).toEqual([]);
+		});
+	}
+});
