@@ -2,13 +2,14 @@ import { derived, get, writable } from 'svelte/store';
 
 import { en } from './en.js';
 import { es } from './es.js';
+import { pt } from './pt.js';
 
 /**
  * The languages the board can speak. English is the source: every other catalog
  * is typed against it, so adding a locale here without a complete catalog is a
  * compile error rather than a blank word on a wall.
  */
-export const LOCALES = ['en', 'es'] as const;
+export const LOCALES = ['en', 'es', 'pt'] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export type Messages = typeof en;
@@ -67,7 +68,7 @@ export function defineCatalog<C extends Catalog & ArityChecked<C>>(catalog: C): 
 	return catalog;
 }
 
-const CATALOGS: Record<Locale, Catalog> = { en, es };
+const CATALOGS: Record<Locale, Catalog> = { en, es, pt };
 
 const STORAGE_KEY_LOCALE = 'choke:locale';
 

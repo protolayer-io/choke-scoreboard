@@ -26,6 +26,7 @@ export const en = {
 	'header.selectLanguage': 'Language',
 	'language.en': 'English',
 	'language.es': 'Español',
+	'language.pt': 'Português',
 
 	'footer.tagline': 'Real-time BJJ scoring via',
 

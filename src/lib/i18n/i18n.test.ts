@@ -149,8 +149,16 @@ describe('choosing a language for the reader', () => {
 		}
 	});
 
-	it('falls back to English for a language it does not speak', () => {
+	it('hears pt-BR as Portuguese', () => {
+		// It used to fall back to English here, which is a special kind of insult
+		// in the language the sport is argued in
 		browser({ language: 'pt-BR' });
+
+		expect(detectLocale()).toBe('pt');
+	});
+
+	it('falls back to English for a language it does not speak', () => {
+		browser({ language: 'ja-JP' });
 
 		expect(detectLocale()).toBe('en');
 	});
@@ -207,5 +215,41 @@ describe('speaking Spanish', () => {
 		locale.set('es');
 
 		expect(get(t)('title.match', 'Bob', 'Carlos')).toContain('Bob vs Carlos');
+	});
+});
+
+describe('speaking Portuguese', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		locale.set('en');
+	});
+
+	it('says the submissions the way the sport says them', () => {
+		// `armbar` is *chave de braço* here, and the rest of the world learned to
+		// say `armbar` from Brazilians who say *chave de braço*. A Brazilian gym
+		// reading `Armbar` off the wall would be the tell that nobody thought about
+		// who is in the room.
+		locale.set('pt');
+
+		expect(get(t)('submission.armbar')).toBe('Chave de braço');
+		expect(get(t)('submission.rear_naked_choke')).toBe('Mata-leão');
+		expect(get(t)('method.submission')).toBe('FINALIZAÇÃO');
+	});
+
+	it('counts in Portuguese', () => {
+		locale.set('pt');
+
+		expect(get(t)('home.matchCount', 1)).toBe('1 luta');
+		expect(get(t)('home.matchCount', 4)).toBe('4 lutas');
+	});
+
+	it('says zero in the plural, whatever CLDR thinks', () => {
+		// Intl.PluralRules('pt').select(0) is `one` — CLDR files Portuguese zero
+		// under the singular (i = 0..1). No Brazilian gym writes `0 luta`, and this
+		// is the DEFAULT screen: an organizer connects, and before a single match
+		// arrives the board counts what it has.
+		locale.set('pt');
+
+		expect(get(t)('home.matchCount', 0)).toBe('0 lutas');
 	});
 });
