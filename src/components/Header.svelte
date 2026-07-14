@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { theme } from '$lib/stores.js';
 	import { t } from '$lib/i18n/index.js';
+	import LanguageSwitcher from './LanguageSwitcher.svelte';
 
 	function toggleTheme(): void {
 		theme.update((t) => {
@@ -30,12 +31,15 @@
 			<span>{$t('app.name')}</span>
 		</a>
 
-		<button
-			onclick={toggleTheme}
-			class="rounded-lg p-2 transition-colors hover:opacity-80"
-			style="background-color: var(--bg-input); color: var(--text-primary);"
-			aria-label={$t('header.toggleTheme')}
-		>
+		<div class="flex items-center gap-2">
+			<LanguageSwitcher />
+
+			<button
+				onclick={toggleTheme}
+				class="rounded-lg p-2 transition-colors hover:opacity-80"
+				style="background-color: var(--bg-input); color: var(--text-primary);"
+				aria-label={$t('header.toggleTheme')}
+			>
 			{#if currentTheme === 'dark'}
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<circle cx="12" cy="12" r="5" />
@@ -52,7 +56,8 @@
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
 				</svg>
-			{/if}
-		</button>
+				{/if}
+			</button>
+		</div>
 	</div>
 </header>

@@ -19,6 +19,14 @@ export const en = {
 	'app.name': 'Choke Scoreboard',
 	'app.description': 'Real-time Brazilian Jiu-Jitsu scoring via Nostr',
 	'header.toggleTheme': 'Toggle theme',
+
+	// A language is always offered in its OWN language: somebody looking for
+	// Spanish is looking for the word "Español", not for "Spanish" — they may not
+	// read the language the menu happens to be in.
+	'header.selectLanguage': 'Language',
+	'language.en': 'English',
+	'language.es': 'Español',
+
 	'footer.tagline': 'Real-time BJJ scoring via',
 
 	// ─── Connecting to an organizer ─────────────────────────────────────────

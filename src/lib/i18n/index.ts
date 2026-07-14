@@ -1,13 +1,14 @@
 import { derived, get, writable } from 'svelte/store';
 
 import { en } from './en.js';
+import { es } from './es.js';
 
 /**
  * The languages the board can speak. English is the source: every other catalog
- * is typed against it, so adding `es` here without a complete `es.ts` is a
+ * is typed against it, so adding a locale here without a complete catalog is a
  * compile error rather than a blank word on a wall.
  */
-export const LOCALES = ['en'] as const;
+export const LOCALES = ['en', 'es'] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export type Messages = typeof en;
@@ -66,10 +67,57 @@ export function defineCatalog<C extends Catalog & ArityChecked<C>>(catalog: C): 
 	return catalog;
 }
 
-const CATALOGS: Record<Locale, Catalog> = { en };
+const CATALOGS: Record<Locale, Catalog> = { en, es };
 
-/** The language on screen. Phase 1 speaks English and nothing else. */
+const STORAGE_KEY_LOCALE = 'choke:locale';
+
+/**
+ * The language on screen.
+ *
+ * It starts in English and NOT in the reader's language, deliberately: this
+ * module also runs where there is no browser (tests, the prerender pass), so the
+ * reader is unknown until initLocale() says otherwise.
+ */
 export const locale = writable<Locale>('en');
+
+export function isLocale(value: unknown): value is Locale {
+	return LOCALES.includes(value as Locale);
+}
+
+/**
+ * The language this reader should get: their choice, then their browser's, then
+ * English.
+ *
+ * Only the language subtag is read, so `es-AR`, `es-419` and `es` all land on
+ * Spanish. A board in Buenos Aires is not going to fall back to English because
+ * nobody wrote a catalog for its exact region.
+ */
+export function detectLocale(): Locale {
+	if (typeof localStorage !== 'undefined') {
+		const saved = localStorage.getItem(STORAGE_KEY_LOCALE);
+		if (isLocale(saved)) return saved;
+	}
+
+	if (typeof navigator !== 'undefined') {
+		const preferred = navigator.language?.split('-')[0];
+		if (isLocale(preferred)) return preferred;
+	}
+
+	return 'en';
+}
+
+/** Switch language, and remember it — a wall is set up once and left alone. */
+export function setLocale(next: Locale): void {
+	locale.set(next);
+	if (typeof localStorage !== 'undefined') {
+		localStorage.setItem(STORAGE_KEY_LOCALE, next);
+	}
+}
+
+/** Adopt the reader's language. Call once, from the layout, in the browser. */
+export function initLocale(): void {
+	locale.set(detectLocale());
+}
 
 /** Keys whose message carries values, and so is a function: `title.match(f1, f2)`. */
 type ParamKey = {

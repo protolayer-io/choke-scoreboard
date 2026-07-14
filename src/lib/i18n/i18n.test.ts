@@ -1,8 +1,17 @@
 import { get } from 'svelte/store';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { en } from './en.js';
-import { defineCatalog, LOCALES, locale, t, translate, type MessageKey } from './index.js';
+import {
+	defineCatalog,
+	detectLocale,
+	LOCALES,
+	locale,
+	setLocale,
+	t,
+	translate,
+	type MessageKey
+} from './index.js';
 
 /**
  * The scoreboard hangs on a wall in a room where nobody is reading English by
@@ -22,8 +31,9 @@ describe('the message catalog', () => {
 		expect(empty).toEqual([]);
 	});
 
-	it('ships English, and starts in English', () => {
+	it('ships English and Spanish, and starts in English', () => {
 		expect(LOCALES).toContain('en');
+		expect(LOCALES).toContain('es');
 		expect(get(locale)).toBe('en');
 	});
 });
@@ -86,5 +96,116 @@ describe('counting matches', () => {
 		expect(get(t)('home.matchCount', 0)).toBe('0 matches');
 		expect(get(t)('home.matchCount', 2)).toBe('2 matches');
 		expect(get(t)('home.matchCount', 11)).toBe('11 matches');
+	});
+});
+
+/**
+ * Picking the language. Three rules, in order: what the reader chose, what their
+ * browser asks for, and English.
+ *
+ * Neither localStorage nor navigator exists where these tests run — which is the
+ * same reason detectLocale() has to guard for both: this module also runs during
+ * the prerender pass, where there is no browser to ask.
+ */
+describe('choosing a language for the reader', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		locale.set('en');
+	});
+
+	/** A localStorage that lives in memory, because the test runner has none. */
+	function browser(options: { language?: string; saved?: string } = {}): void {
+		const store = new Map<string, string>();
+		if (options.saved !== undefined) store.set('choke:locale', options.saved);
+
+		vi.stubGlobal('localStorage', {
+			getItem: (key: string) => store.get(key) ?? null,
+			setItem: (key: string, value: string) => store.set(key, value),
+			removeItem: (key: string) => store.delete(key)
+		});
+		vi.stubGlobal('navigator', { language: options.language ?? 'en-US' });
+	}
+
+	it('honours what the reader chose last time, over the browser', () => {
+		// Arrange — a Spanish speaker who deliberately set this wall to English
+		browser({ language: 'es-AR', saved: 'en' });
+
+		// Assert — their choice wins. A wall is set up once and then left alone.
+		expect(detectLocale()).toBe('en');
+	});
+
+	it('reads the browser when the reader has never chosen', () => {
+		browser({ language: 'es-AR' });
+
+		expect(detectLocale()).toBe('es');
+	});
+
+	it('ignores the region, and hears the language', () => {
+		// es-AR, es-419 and es are all Spanish. A board in Buenos Aires must not
+		// fall back to English because nobody wrote a catalog for its region.
+		for (const language of ['es', 'es-AR', 'es-419', 'es-MX']) {
+			browser({ language });
+			expect(detectLocale()).toBe('es');
+		}
+	});
+
+	it('falls back to English for a language it does not speak', () => {
+		browser({ language: 'pt-BR' });
+
+		expect(detectLocale()).toBe('en');
+	});
+
+	it('refuses a saved locale that is not a language it speaks', () => {
+		// Otherwise the catalog lookup returns undefined and the wall goes blank
+		browser({ language: 'en-US', saved: 'klingon' });
+
+		expect(detectLocale()).toBe('en');
+	});
+
+	it('remembers the switch', () => {
+		browser();
+
+		setLocale('es');
+
+		expect(localStorage.getItem('choke:locale')).toBe('es');
+		expect(get(locale)).toBe('es');
+	});
+
+	it('survives having no browser at all', () => {
+		// The prerender pass: no localStorage, no navigator, and it must not throw
+		vi.stubGlobal('localStorage', undefined);
+		vi.stubGlobal('navigator', undefined);
+
+		expect(detectLocale()).toBe('en');
+	});
+});
+
+describe('speaking Spanish', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		locale.set('en');
+	});
+
+	it('translates the screen the moment the locale changes', () => {
+		// The whole point of the reactive store: not one component was touched
+		locale.set('es');
+
+		expect(get(t)('status.live')).toBe('EN VIVO');
+		expect(get(t)('status.paused')).toBe('EN PAUSA');
+		expect(get(t)('match.notFoundTitle')).toBe('Lucha no encontrada');
+	});
+
+	it('counts in Spanish, by Spanish plural rules', () => {
+		locale.set('es');
+
+		expect(get(t)('home.matchCount', 1)).toBe('1 lucha');
+		expect(get(t)('home.matchCount', 3)).toBe('3 luchas');
+		expect(get(t)('home.matchCount', 0)).toBe('0 luchas');
+	});
+
+	it('keeps both fighters in the title, in order', () => {
+		locale.set('es');
+
+		expect(get(t)('title.match', 'Bob', 'Carlos')).toContain('Bob vs Carlos');
 	});
 });

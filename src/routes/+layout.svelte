@@ -2,9 +2,16 @@
 	import '../app.css';
 	import { page } from '$app/stores';
 	import Header from '../components/Header.svelte';
-	import { locale, t } from '$lib/i18n/index.js';
+	import { initLocale, locale, t } from '$lib/i18n/index.js';
 
 	let { children } = $props();
+
+	// Adopt the reader's language: what they chose last time, or what their
+	// browser asks for. The store starts in English because this code also runs
+	// where there is no browser to ask — until here, in the browser, there is.
+	$effect(() => {
+		initLocale();
+	});
 
 	// The broadcast match view owns the whole viewport: no header, no footer.
 	let isBroadcast = $derived($page.route.id === '/match/[id]');
