@@ -150,6 +150,22 @@ describe('the penalty ladder', () => {
 	});
 });
 
+describe('the winner and the reason never contradict each other', () => {
+	it('agrees when a penalty-conceded advantage decides a level match', () => {
+		// Arrange — a match with no method recorded, level on effective points,
+		// and decided only by the advantage Carlos's second penalty conceded.
+		const m = match({ f1_pt2: 1, f2_pt2: 1, f2_pen: 2 });
+		expect(getF1EffectivePoints(m)).toBe(getF2EffectivePoints(m));
+		expect(getF1EffectiveAdvantages(m)).toBe(1);
+
+		// Assert — the board must not name Bob the winner and then announce the
+		// match "decided on advantages" for Carlos. Comparing raw advantages
+		// here (0–0) would have called it a DRAW while getWinner named Bob.
+		expect(getWinner(m)).toBe(1);
+		expect(getWinMethod(m).method).toBe('ADVANTAGE');
+	});
+});
+
 describe('penalties are never a tiebreak of their own', () => {
 	it('a level match stays level, whatever the penalty counts', () => {
 		// Arrange — level on effective points and advantages; Carlos has one

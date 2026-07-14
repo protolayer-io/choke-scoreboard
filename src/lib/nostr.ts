@@ -1,6 +1,6 @@
 import { SimplePool } from 'nostr-tools/pool';
 import { nip19 } from 'nostr-tools';
-import type { MatchEvent, MatchStatus } from './types.js';
+import type { DqReason, MatchEvent, MatchMethod, MatchStatus, MatchWinner } from './types.js';
 import { upsertMatch, isLoading } from './stores.js';
 import { MATCH_MAX_AGE_SECONDS } from './constants.js';
 import type { SubCloser } from 'nostr-tools/abstract-pool';
@@ -64,6 +64,50 @@ export function decodePubkey(input: string): string {
  * Parse a Nostr event into a MatchEvent.
  * Returns null if parsing fails.
  */
+const METHODS: MatchMethod[] = [
+	'submission',
+	'points',
+	'advantages',
+	'decision',
+	'dq',
+	'forfeit',
+	'draw'
+];
+
+const DQ_REASONS: DqReason[] = [
+	'accumulated_penalties',
+	'technical_foul',
+	'disciplinary_foul'
+];
+
+function parseWinner(value: unknown): MatchWinner | undefined {
+	return value === 'f1' || value === 'f2' ? value : undefined;
+}
+
+/**
+ * A method we do not recognise comes back undefined — a future client may
+ * publish one we have never heard of, and a scoreboard that threw the whole
+ * event away over it would show nothing at all.
+ *
+ * That is safe because `winner` is the authoritative field: an event we cannot
+ * *describe* still names the fighter who won, and the board will still name
+ * them.
+ */
+function parseMethod(value: unknown): MatchMethod | undefined {
+	return METHODS.includes(value as MatchMethod) ? (value as MatchMethod) : undefined;
+}
+
+function parseDqReason(value: unknown): DqReason | undefined {
+	return DQ_REASONS.includes(value as DqReason) ? (value as DqReason) : undefined;
+}
+
+/** Free text, or nothing. An empty string is nothing. */
+function parseText(value: unknown): string | undefined {
+	if (typeof value !== 'string') return undefined;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function parseMatchEvent(event: {
 	kind: number;
 	content: string;
@@ -102,6 +146,18 @@ function parseMatchEvent(event: {
 			f2_adv: Number(data.f2_adv) || 0,
 			f1_pen: Number(data.f1_pen) || 0,
 			f2_pen: Number(data.f2_pen) || 0,
+
+			// The outcome. Dropping these on the floor — which is what building the
+			// object field by field quietly did — makes every modern event look
+			// like a legacy one, and the scoreboard goes right back to announcing
+			// the loser of a submission as the winner on points.
+			winner: parseWinner(data.winner),
+			method: parseMethod(data.method),
+			submission: parseText(data.submission),
+			dq_reason: parseDqReason(data.dq_reason),
+			dq_detail: parseText(data.dq_detail),
+			ended_at: data.ended_at !== undefined ? Number(data.ended_at) : undefined,
+
 			created_at: event.created_at,
 			pubkey: event.pubkey
 		};
@@ -239,3 +295,6 @@ export function closeSubscription(): void {
 		pool = null;
 	}
 }
+
+/** Exposed for tests: the parser is where the outcome enters the app. */
+export const __parseMatchEventForTests = parseMatchEvent;

@@ -1,4 +1,4 @@
-import type { MatchEvent, MatchMethod, MatchWinner } from './types.js';
+import type { DqReason, MatchEvent, MatchMethod } from './types.js';
 
 /**
  * Calculate total score for a fighter.
@@ -134,7 +134,7 @@ const METHOD_LABELS: Record<MatchMethod, string> = {
 	draw: 'DRAW'
 };
 
-const DQ_LABELS: Record<string, string> = {
+const DQ_LABELS: Record<DqReason, string> = {
 	accumulated_penalties: 'four penalties',
 	technical_foul: 'technical foul',
 	disciplinary_foul: 'disciplinary foul'
@@ -159,11 +159,17 @@ export function getWinMethod(match: MatchEvent): { method: string; detail: strin
 		return { method: METHOD_LABELS[method], detail: describeMethod(match, method, scoreLine) };
 	}
 
-	// Legacy: no outcome was ever recorded. Say what the scoreboard says, and
-	// nothing more — including that penalties decided nothing, because in the
-	// app that refereed this match, they did not.
+	// No outcome recorded. Say what the scoreboard says, and nothing more.
+	//
+	// The advantages compared here are the *effective* ones — the same numbers
+	// getLeader() and getWinner() use. Comparing the raw ones would let this
+	// function announce "decided on advantages" for one fighter while getWinner
+	// named the other, which is the scoreboard contradicting itself on a wall.
 	if (p1 !== p2) return { method: 'POINTS', detail: scoreLine };
-	if (match.f1_adv !== match.f2_adv) {
+
+	const a1 = getF1EffectiveAdvantages(match);
+	const a2 = getF2EffectiveAdvantages(match);
+	if (a1 !== a2) {
 		return { method: 'ADVANTAGE', detail: `Tied ${scoreLine} — decided on advantages` };
 	}
 	return { method: 'DRAW', detail: `Tied ${scoreLine}` };
