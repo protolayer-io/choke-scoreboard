@@ -34,9 +34,27 @@ export function encodePubkey(hex: string): string {
 	return nip19.npubEncode(hex);
 }
 
+/** What was wrong with the pubkey. A code, so the view can say it in any language. */
+export type PubkeyErrorCode = 'invalid-npub' | 'invalid-pubkey';
+
+/**
+ * A pubkey this module refuses.
+ *
+ * It carries a code, not a sentence. A sentence would be English, thrown by a
+ * module that has no idea what language the room is reading — and the view,
+ * which does know, would have nothing to do but print it. The `message` is the
+ * code itself: that is for a stack trace, never for a screen.
+ */
+export class PubkeyError extends Error {
+	constructor(readonly code: PubkeyErrorCode) {
+		super(code);
+		this.name = 'PubkeyError';
+	}
+}
+
 /**
  * Decode an npub or hex pubkey string to hex.
- * Throws if the input is invalid.
+ * Throws a PubkeyError if the input is invalid.
  */
 export function decodePubkey(input: string): string {
 	const trimmed = input.trim();
@@ -48,7 +66,7 @@ export function decodePubkey(input: string): string {
 				return decoded.data;
 			}
 		} catch {
-			throw new Error('Invalid npub format');
+			throw new PubkeyError('invalid-npub');
 		}
 	}
 
@@ -57,7 +75,7 @@ export function decodePubkey(input: string): string {
 		return trimmed.toLowerCase();
 	}
 
-	throw new Error('Invalid pubkey: must be npub or 64-char hex');
+	throw new PubkeyError('invalid-pubkey');
 }
 
 /**

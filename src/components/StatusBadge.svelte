@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { MatchStatus } from '$lib/types.js';
+	import { t } from '$lib/i18n/index.js';
 
 	interface Props {
 		status: MatchStatus;
@@ -16,7 +17,7 @@
 			<rect x="6" y="5" width="4" height="14" rx="1" />
 			<rect x="14" y="5" width="4" height="14" rx="1" />
 		</svg>
-		PAUSED
+		{$t('status.paused')}
 	</span>
 {:else if status === 'waiting'}
 	<span class="inline-flex items-center gap-1 rounded-full bg-gray-500/20 px-2.5 py-0.5 text-xs font-medium text-gray-400">
@@ -24,7 +25,7 @@
 			<circle cx="12" cy="12" r="10" />
 			<polyline points="12 6 12 12 16 14" />
 		</svg>
-		WAITING
+		{$t('status.waiting')}
 	</span>
 {:else if status === 'in-progress'}
 	<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold text-white" style="background-color: var(--color-green-live, #1BA34E);">
@@ -32,15 +33,15 @@
 			<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75"></span>
 			<span class="relative inline-flex h-2 w-2 rounded-full bg-white"></span>
 		</span>
-		LIVE
+		{$t('status.live')}
 	</span>
 {:else if status === 'finished'}
 	<span class="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-medium text-amber-400">
 		<span class="animate-bounce">🏆</span>
-		FINISHED
+		{$t('status.finished')}
 	</span>
 {:else}
 	<span class="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-medium text-red-400">
-		CANCELED
+		{$t('status.canceled')}
 	</span>
 {/if}

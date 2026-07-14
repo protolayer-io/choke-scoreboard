@@ -11,6 +11,7 @@
 		isMatchPaused
 	} from '$lib/scoring.js';
 	import { sanitizeColor } from '$lib/colors.js';
+	import { t } from '$lib/i18n/index.js';
 	import StatusBadge from './StatusBadge.svelte';
 	import Timer from './Timer.svelte';
 	import { base } from '$app/paths';
@@ -84,12 +85,12 @@
 			<div class="mt-1 flex justify-center gap-2 text-xs font-medium">
 				{#if f1Adv > 0}
 					<span class="rounded px-1.5 py-0.5" style="background-color: var(--color-gold, #F5B800); color: #000;">
-						A {f1Adv}
+						{$t('score.advantageShort')} {f1Adv}
 					</span>
 				{/if}
 				{#if match.f1_pen > 0}
 					<span class="rounded px-1.5 py-0.5 text-white" style="background-color: var(--color-red-penalty, #C0392B);">
-						P {match.f1_pen}
+						{$t('score.penaltyShort')} {match.f1_pen}
 					</span>
 				{/if}
 			</div>
@@ -97,7 +98,7 @@
 
 		<!-- VS divider -->
 		<div class="text-center font-bold" style="color: var(--text-secondary);">
-			<span class="{isBroadcast ? 'text-xl' : 'text-sm'}">VS</span>
+			<span class="{isBroadcast ? 'text-xl' : 'text-sm'}">{$t('score.vs')}</span>
 		</div>
 
 		<!-- Fighter 2 -->
@@ -124,12 +125,12 @@
 			<div class="mt-1 flex justify-center gap-2 text-xs font-medium">
 				{#if f2Adv > 0}
 					<span class="rounded px-1.5 py-0.5" style="background-color: var(--color-gold, #F5B800); color: #000;">
-						A {f2Adv}
+						{$t('score.advantageShort')} {f2Adv}
 					</span>
 				{/if}
 				{#if match.f2_pen > 0}
 					<span class="rounded px-1.5 py-0.5 text-white" style="background-color: var(--color-red-penalty, #C0392B);">
-						P {match.f2_pen}
+						{$t('score.penaltyShort')} {match.f2_pen}
 					</span>
 				{/if}
 			</div>
@@ -154,15 +155,15 @@
 		<div class="border-t px-6 py-3" style="border-color: var(--border-color);">
 			<div class="grid grid-cols-[1fr_auto_1fr] gap-4 text-center text-xs" style="color: var(--text-secondary);">
 				<div class="flex justify-center gap-3">
-					<span>2pt: {match.f1_pt2}</span>
-					<span>3pt: {match.f1_pt3}</span>
-					<span>4pt: {match.f1_pt4}</span>
+					<span>{$t('score.pt2.card')} {match.f1_pt2}</span>
+					<span>{$t('score.pt3.card')} {match.f1_pt3}</span>
+					<span>{$t('score.pt4.card')} {match.f1_pt4}</span>
 				</div>
-				<span>Points</span>
+				<span>{$t('score.points')}</span>
 				<div class="flex justify-center gap-3">
-					<span>2pt: {match.f2_pt2}</span>
-					<span>3pt: {match.f2_pt3}</span>
-					<span>4pt: {match.f2_pt4}</span>
+					<span>{$t('score.pt2.card')} {match.f2_pt2}</span>
+					<span>{$t('score.pt3.card')} {match.f2_pt3}</span>
+					<span>{$t('score.pt4.card')} {match.f2_pt4}</span>
 				</div>
 			</div>
 		</div>

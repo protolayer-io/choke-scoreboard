@@ -13,21 +13,25 @@
 		isMatchPaused
 	} from '$lib/scoring.js';
 	import { alpha, sanitizeColor } from '$lib/colors.js';
+	import { t } from '$lib/i18n/index.js';
 	import Timer from '../../../components/Timer.svelte';
 	import type { MatchEvent } from '$lib/types.js';
 
 	const DEFAULT_F1_COLOR = '#13c88a';
 	const DEFAULT_F2_COLOR = '#ff9f33';
 
+	// The label is a message key, not a word — the wall has to say it in the
+	// language of the room it hangs in. The KEYS of this map are wire values and
+	// stay English forever; only the labels travel.
 	const STATUS_STYLES = {
-		waiting: { label: 'WAITING', color: '#8a97b2', dot: '#8a97b2' },
-		'in-progress': { label: 'LIVE', color: '#2ee08a', dot: '#16c05f' },
-		finished: { label: 'FINAL', color: '#ffffff', dot: '#ffffff' },
-		canceled: { label: 'CANCELED', color: '#f87171', dot: '#ef4444' }
+		waiting: { label: 'status.waiting', color: '#8a97b2', dot: '#8a97b2' },
+		'in-progress': { label: 'status.live', color: '#2ee08a', dot: '#16c05f' },
+		finished: { label: 'status.final', color: '#ffffff', dot: '#ffffff' },
+		canceled: { label: 'status.canceled', color: '#f87171', dot: '#ef4444' }
 	} as const;
 
 	/** A paused match is still 'in-progress', so it has no status of its own to style. */
-	const PAUSED_STYLE = { label: 'PAUSED', color: '#f5b800', dot: '#f5b800' } as const;
+	const PAUSED_STYLE = { label: 'status.paused', color: '#f5b800', dot: '#f5b800' } as const;
 
 	let matchId = $derived($page.params.id ?? '');
 	let nowSeconds = $state(Math.floor(Date.now() / 1000));
@@ -53,6 +57,21 @@
 	let f2Score = $derived(match ? getF2EffectivePoints(match) : 0);
 	let f1Adv = $derived(match ? getF1EffectiveAdvantages(match) : 0);
 	let f2Adv = $derived(match ? getF2EffectiveAdvantages(match) : 0);
+
+	// The point breakdown, keyed by the point value and NOT by the label on
+	// screen: the label is translated now, and a key that changes with the
+	// language would make Svelte tear down and rebuild these three every time the
+	// room changes language.
+	let f1Breakdown = $derived([
+		{ id: 'pt2', label: $t('score.pt2.wall'), value: match?.f1_pt2 ?? 0 },
+		{ id: 'pt3', label: $t('score.pt3.wall'), value: match?.f1_pt3 ?? 0 },
+		{ id: 'pt4', label: $t('score.pt4.wall'), value: match?.f1_pt4 ?? 0 }
+	]);
+	let f2Breakdown = $derived([
+		{ id: 'pt2', label: $t('score.pt2.wall'), value: match?.f2_pt2 ?? 0 },
+		{ id: 'pt3', label: $t('score.pt3.wall'), value: match?.f2_pt3 ?? 0 },
+		{ id: 'pt4', label: $t('score.pt4.wall'), value: match?.f2_pt4 ?? 0 }
+	]);
 
 	let isLive = $derived(match?.status === 'in-progress');
 	let isPaused = $derived(match ? isMatchPaused(match) : false);
@@ -108,7 +127,7 @@
 </script>
 
 <svelte:head>
-	<title>{match ? `${match.f1_name} vs ${match.f2_name}` : 'Match'} — Choke Scoreboard</title>
+	<title>{match ? $t('title.match', match.f1_name, match.f2_name) : $t('title.matchFallback')}</title>
 </svelte:head>
 
 {#if match}
@@ -160,7 +179,7 @@
 
 			<div class="flex flex-col items-center gap-[2vh]">
 				<div class="flex gap-[2vw]">
-					{#each [['2 PTS', match.f1_pt2], ['3 PTS', match.f1_pt3], ['4 PTS', match.f1_pt4]] as [label, value] (label)}
+					{#each f1Breakdown as { id, label, value } (id)}
 						<div class="text-center">
 							<div class="font-bold tracking-[0.16em]" style="color:#5f6d8a;font-size:clamp(0.6rem,1vw,19px)">
 								{label}
@@ -176,14 +195,14 @@
 						class="flex items-center gap-2 rounded-[10px] px-[1vw] py-[0.9vh]"
 						style="background:rgba(244,180,0,.14);border:1px solid rgba(244,180,0,.45)"
 					>
-						<span class="font-bold tracking-[0.1em]" style="color:#f4b400;font-size:clamp(0.75rem,1.25vw,24px)">ADV</span>
+						<span class="font-bold tracking-[0.1em]" style="color:#f4b400;font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.advantages')}</span>
 						<span class="font-extrabold" style="color:#ffd451;font-size:clamp(0.85rem,1.4vw,27px)">{f1Adv}</span>
 					</div>
 					<div
 						class="flex items-center gap-2 rounded-[10px] px-[1vw] py-[0.9vh]"
 						style="background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.5)"
 					>
-						<span class="font-bold tracking-[0.1em]" style="color:#f87171;font-size:clamp(0.75rem,1.25vw,24px)">PEN</span>
+						<span class="font-bold tracking-[0.1em]" style="color:#f87171;font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.penalties')}</span>
 						<span class="font-extrabold" style="color:#fca5a5;font-size:clamp(0.85rem,1.4vw,27px)">{match.f1_pen}</span>
 					</div>
 				</div>
@@ -220,7 +239,7 @@
 
 			<div class="flex flex-col items-center gap-[2vh]">
 				<div class="flex gap-[2vw]">
-					{#each [['2 PTS', match.f2_pt2], ['3 PTS', match.f2_pt3], ['4 PTS', match.f2_pt4]] as [label, value] (label)}
+					{#each f2Breakdown as { id, label, value } (id)}
 						<div class="text-center">
 							<div class="font-bold tracking-[0.16em]" style="color:#5f6d8a;font-size:clamp(0.6rem,1vw,19px)">
 								{label}
@@ -236,14 +255,14 @@
 						class="flex items-center gap-2 rounded-[10px] px-[1vw] py-[0.9vh]"
 						style="background:rgba(244,180,0,.14);border:1px solid rgba(244,180,0,.45)"
 					>
-						<span class="font-bold tracking-[0.1em]" style="color:#f4b400;font-size:clamp(0.75rem,1.25vw,24px)">ADV</span>
+						<span class="font-bold tracking-[0.1em]" style="color:#f4b400;font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.advantages')}</span>
 						<span class="font-extrabold" style="color:#ffd451;font-size:clamp(0.85rem,1.4vw,27px)">{f2Adv}</span>
 					</div>
 					<div
 						class="flex items-center gap-2 rounded-[10px] px-[1vw] py-[0.9vh]"
 						style="background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.5)"
 					>
-						<span class="font-bold tracking-[0.1em]" style="color:#f87171;font-size:clamp(0.75rem,1.25vw,24px)">PEN</span>
+						<span class="font-bold tracking-[0.1em]" style="color:#f87171;font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.penalties')}</span>
 						<span class="font-extrabold" style="color:#fca5a5;font-size:clamp(0.85rem,1.4vw,27px)">{match.f2_pen}</span>
 					</div>
 				</div>
@@ -273,7 +292,7 @@
 					class="font-bold tracking-[0.16em] whitespace-nowrap"
 					style="color:{statusColor};font-size:clamp(0.7rem,1.25vw,24px)"
 				>
-					{status.label}
+					{$t(status.label)}
 				</span>
 			</div>
 
@@ -284,7 +303,7 @@
 						style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);box-shadow:0 0 60px rgba(0,0,0,.45)"
 					>
 						<span class="font-bold tracking-[0.3em]" style="color:#5f6d8a;font-size:clamp(0.55rem,0.9vw,17px)">
-							TIME
+							{$t('score.time')}
 						</span>
 						<Timer {match} tone="bright" class="text-[clamp(2.5rem,5.2vw,76px)] leading-none" />
 					</div>
@@ -292,7 +311,7 @@
 						class="font-extrabold tracking-[0.14em]"
 						style="color:rgba(255,255,255,.16);font-size:clamp(1rem,1.7vw,32px)"
 					>
-						VS
+						{$t('score.vs')}
 					</div>
 				{/if}
 			</div>
@@ -305,7 +324,7 @@
 				style="background:rgba(5,7,14,.72)"
 			>
 				<div class="font-bold tracking-[0.36em]" style="color:#8a97b2;font-size:clamp(0.7rem,1.25vw,24px)">
-					{winner === 0 ? 'RESULT' : 'WINNER'}
+					{winner === 0 ? $t('score.result') : $t('score.winner')}
 				</div>
 				{#if winner !== 0}
 					<div
@@ -337,7 +356,7 @@
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<polyline points="15 18 9 12 15 6" />
 			</svg>
-			Back
+			{$t('match.back')}
 		</a>
 
 		<button
@@ -345,16 +364,16 @@
 			onclick={toggleFullscreen}
 			class="absolute top-4 right-6 z-10 rounded-lg px-3 py-2 text-sm text-white/60 transition-colors hover:bg-white/10 hover:text-white"
 		>
-			{isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+			{isFullscreen ? $t('match.exitFullscreen') : $t('match.fullscreen')}
 		</button>
 	</div>
 {:else}
 	<div class="flex h-full flex-col items-center justify-center text-center" style="background:#05070e">
 		<span class="text-5xl">🤷</span>
-		<p class="mt-4 text-lg font-medium" style="color: var(--text-secondary);">Match not found</p>
+		<p class="mt-4 text-lg font-medium" style="color: var(--text-secondary);">{$t('match.notFoundTitle')}</p>
 		<p class="mt-1 text-sm" style="color: var(--text-secondary);">
-			This match may not exist or hasn't been loaded yet.
+			{$t('match.notFoundBody')}
 		</p>
-		<a href="{base}/" class="mt-6 text-sm underline" style="color: var(--color-green-live);">Back to scoreboard</a>
+		<a href="{base}/" class="mt-6 text-sm underline" style="color: var(--color-green-live);">{$t('match.backToScoreboard')}</a>
 	</div>
 {/if}

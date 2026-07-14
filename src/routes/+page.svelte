@@ -3,6 +3,7 @@
 	import MatchCard from '../components/MatchCard.svelte';
 	import { matchesMap, viewMode, isLoading, activePubkey, getSortedMatches } from '$lib/stores.js';
 	import { MATCH_AGE_CHECK_INTERVAL_MS } from '$lib/constants.js';
+	import { t } from '$lib/i18n/index.js';
 	import type { MatchEvent, ViewMode } from '$lib/types.js';
 
 	let allMatches = $state<Map<string, MatchEvent>>(new Map());
@@ -55,7 +56,7 @@
 </script>
 
 <svelte:head>
-	<title>🥋 Choke Scoreboard</title>
+	<title>{$t('title.home')}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl space-y-6 px-4 py-6">
@@ -65,14 +66,14 @@
 		<!-- View mode toggle -->
 		<div class="flex items-center justify-between">
 			<p class="text-sm" style="color: var(--text-secondary);">
-				{matches.length} match{matches.length !== 1 ? 'es' : ''}
+				{$t('home.matchCount', matches.length)}
 			</p>
 			<button
 				onclick={toggleViewMode}
 				class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
 				style="background-color: var(--bg-input); color: var(--text-secondary);"
 			>
-				{currentViewMode === 'compact' ? '📺 Broadcast' : '📋 Compact'}
+				{currentViewMode === 'compact' ? $t('home.viewBroadcast') : $t('home.viewCompact')}
 			</button>
 		</div>
 
@@ -80,15 +81,15 @@
 			<!-- Loading spinner -->
 			<div class="flex flex-col items-center justify-center py-16">
 				<div class="h-10 w-10 animate-spin rounded-full border-4 border-t-transparent" style="border-color: var(--border-color); border-top-color: var(--color-green-live);"></div>
-				<p class="mt-4 text-sm" style="color: var(--text-secondary);">Connecting to relays...</p>
+				<p class="mt-4 text-sm" style="color: var(--text-secondary);">{$t('home.connecting')}</p>
 			</div>
 		{:else if matches.length === 0}
 			<!-- Empty state -->
 			<div class="flex flex-col items-center justify-center py-16">
 				<span class="text-5xl">🥋</span>
-				<p class="mt-4 text-lg font-medium" style="color: var(--text-secondary);">No matches found</p>
+				<p class="mt-4 text-lg font-medium" style="color: var(--text-secondary);">{$t('home.emptyTitle')}</p>
 				<p class="mt-1 text-sm" style="color: var(--text-secondary);">
-					Waiting for match events from the organizer...
+					{$t('home.emptyBody')}
 				</p>
 			</div>
 		{:else}
@@ -103,10 +104,9 @@
 		<!-- Welcome state -->
 		<div class="flex flex-col items-center justify-center py-16 text-center">
 			<span class="text-6xl">🥋</span>
-			<h2 class="mt-4 text-2xl font-bold" style="color: var(--text-primary);">BJJ Match Scoreboard</h2>
+			<h2 class="mt-4 text-2xl font-bold" style="color: var(--text-primary);">{$t('home.welcomeTitle')}</h2>
 			<p class="mt-2 max-w-md text-sm" style="color: var(--text-secondary);">
-				Enter a tournament organizer's Nostr public key to subscribe to live match
-				scores, or try Debug Mode to see example matches.
+				{$t('home.welcomeBody')}
 			</p>
 		</div>
 	{/if}

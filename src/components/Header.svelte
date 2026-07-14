@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { theme } from '$lib/stores.js';
+	import { t } from '$lib/i18n/index.js';
 
 	function toggleTheme(): void {
 		theme.update((t) => {
@@ -26,14 +27,14 @@
 	<div class="mx-auto flex max-w-6xl items-center justify-between">
 		<a href="/" class="flex items-center gap-2 text-xl font-bold no-underline" style="color: var(--text-primary);">
 			<span class="text-2xl">🥋</span>
-			<span>Choke Scoreboard</span>
+			<span>{$t('app.name')}</span>
 		</a>
 
 		<button
 			onclick={toggleTheme}
 			class="rounded-lg p-2 transition-colors hover:opacity-80"
 			style="background-color: var(--bg-input); color: var(--text-primary);"
-			aria-label="Toggle theme"
+			aria-label={$t('header.toggleTheme')}
 		>
 			{#if currentTheme === 'dark'}
 				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

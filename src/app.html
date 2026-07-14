@@ -4,6 +4,11 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.ico" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- This shell is what a crawler with no JavaScript sees, and the app renders
+		     client-side (ssr = false) — so lang and description have to ship with a
+		     value, in English. +layout.svelte rewrites both to the reader's language
+		     once it boots. Do not move them into <svelte:head>: that would leave the
+		     static HTML with no description at all. -->
 		<meta name="description" content="BJJ Match Scoreboard - Real-time Brazilian Jiu-Jitsu scoring via Nostr" />
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
