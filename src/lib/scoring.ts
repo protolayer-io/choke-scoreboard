@@ -124,61 +124,33 @@ export function getWinner(match: MatchEvent): 0 | 1 | 2 {
 	return getLeader(match); // legacy: the scoreboard is all there is
 }
 
-const METHOD_LABELS: Record<MatchMethod, string> = {
-	submission: 'SUBMISSION',
-	points: 'POINTS',
-	advantages: 'ADVANTAGE',
-	decision: 'DECISION',
-	dq: 'DISQUALIFICATION',
-	forfeit: 'FORFEIT',
-	draw: 'DRAW'
-};
-
 /**
- * The submission ids the referee's app publishes, and what a human reads.
+ * How the match was decided, in the only terms this module is allowed to hold:
+ * ids and numbers.
  *
- * The app is translated and the data is not: a referee taps *chave de braço* in
- * São Paulo and 腕十字固め in Tokyo, and both events say `armbar`. That is what
- * makes counting armbars across a tournament mean anything — and it is why this
- * board must not print the id. `rear_naked_choke` on a wall is a bug.
+ * It used to hand back finished English — `Tied 4 × 0 — decided on advantages` —
+ * and a room reading Spanish got it anyway. Scoring knows WHAT happened; only
+ * the view knows what language to say it in. So this reports what happened, and
+ * i18n/outcome.ts says it out loud.
  *
- * See choke/docs/SPEC.md § Submission ids.
+ * `submission` and a dq's `detail` are free text from the referee and travel
+ * exactly as they were typed: they are the one part of an outcome that no
+ * catalog can ever hold, because BJJ invents submissions faster than any list.
  */
-const SUBMISSION_LABELS: Record<string, string> = {
-	armbar: 'Armbar',
-	rear_naked_choke: 'Rear naked choke',
-	triangle: 'Triangle choke',
-	guillotine: 'Guillotine',
-	kimura: 'Kimura',
-	americana: 'Americana',
-	cross_collar_choke: 'Cross collar choke',
-	bow_and_arrow: 'Bow and arrow choke',
-	ezekiel: 'Ezekiel choke',
-	omoplata: 'Omoplata',
-	arm_triangle: 'Arm triangle',
-	north_south_choke: 'North–south choke',
-	straight_ankle_lock: 'Straight ankle lock',
-	heel_hook: 'Heel hook',
-	toe_hold: 'Toe hold'
-};
+export type OutcomeDetail =
+	| { kind: 'submission'; submission?: string }
+	| { kind: 'score'; top: number; bottom: number }
+	| { kind: 'tied'; top: number; bottom: number }
+	| { kind: 'tiedAdvantages'; top: number; bottom: number }
+	| { kind: 'tiedDecision'; top: number; bottom: number }
+	| { kind: 'dq'; reason?: DqReason; detail?: string }
+	| { kind: 'forfeit' };
 
-/**
- * A submission's name, for a wall.
- *
- * A technique we do not know comes back **exactly as the referee typed it**. It
- * has to: the field is free text on purpose, because BJJ invents submissions
- * faster than any list can hold them, and a board that blanked on a baratoplata
- * would be hiding the most interesting thing that happened all day.
- */
-export function submissionLabel(submission: string): string {
-	return SUBMISSION_LABELS[submission] ?? submission;
+export interface MatchOutcome {
+	/** The wire id, never a label: 'submission', not 'SUBMISSION'. */
+	method: MatchMethod;
+	detail: OutcomeDetail;
 }
-
-const DQ_LABELS: Record<DqReason, string> = {
-	accumulated_penalties: 'four penalties',
-	technical_foul: 'technical foul',
-	disciplinary_foul: 'disciplinary foul'
-};
 
 /**
  * Describe how a finished match was decided.
@@ -189,14 +161,15 @@ const DQ_LABELS: Record<DqReason, string> = {
  *
  * A legacy event still has to be guessed at, because it genuinely says nothing.
  */
-export function getWinMethod(match: MatchEvent): { method: string; detail: string } {
+export function getOutcome(match: MatchEvent): MatchOutcome {
 	const p1 = getF1EffectivePoints(match);
 	const p2 = getF2EffectivePoints(match);
-	const scoreLine = `${Math.max(p1, p2)} × ${Math.min(p1, p2)}`;
+	const top = Math.max(p1, p2);
+	const bottom = Math.min(p1, p2);
 
 	const method = match.method;
 	if (method) {
-		return { method: METHOD_LABELS[method], detail: describeMethod(match, method, scoreLine) };
+		return { method, detail: describeMethod(match, method, top, bottom) };
 	}
 
 	// No outcome recorded. Say what the scoreboard says, and nothing more.
@@ -205,34 +178,37 @@ export function getWinMethod(match: MatchEvent): { method: string; detail: strin
 	// getLeader() and getWinner() use. Comparing the raw ones would let this
 	// function announce "decided on advantages" for one fighter while getWinner
 	// named the other, which is the scoreboard contradicting itself on a wall.
-	if (p1 !== p2) return { method: 'POINTS', detail: scoreLine };
+	if (p1 !== p2) return { method: 'points', detail: { kind: 'score', top, bottom } };
 
 	const a1 = getF1EffectiveAdvantages(match);
 	const a2 = getF2EffectiveAdvantages(match);
 	if (a1 !== a2) {
-		return { method: 'ADVANTAGE', detail: `Tied ${scoreLine} — decided on advantages` };
+		return { method: 'advantages', detail: { kind: 'tiedAdvantages', top, bottom } };
 	}
-	return { method: 'DRAW', detail: `Tied ${scoreLine}` };
+	return { method: 'draw', detail: { kind: 'tied', top, bottom } };
 }
 
-function describeMethod(match: MatchEvent, method: MatchMethod, scoreLine: string): string {
+function describeMethod(
+	match: MatchEvent,
+	method: MatchMethod,
+	top: number,
+	bottom: number
+): OutcomeDetail {
 	switch (method) {
 		case 'submission':
-			return match.submission ? submissionLabel(match.submission) : 'Submitted';
+			return { kind: 'submission', submission: match.submission };
 		case 'points':
-			return scoreLine;
+			return { kind: 'score', top, bottom };
 		case 'advantages':
-			return `Tied ${scoreLine} — decided on advantages`;
+			return { kind: 'tiedAdvantages', top, bottom };
 		case 'decision':
-			return `Tied ${scoreLine} — referee decision`;
-		case 'dq': {
-			const reason = match.dq_reason ? DQ_LABELS[match.dq_reason] : 'disqualified';
-			return match.dq_detail ? `${reason} — ${match.dq_detail}` : reason;
-		}
+			return { kind: 'tiedDecision', top, bottom };
+		case 'dq':
+			return { kind: 'dq', reason: match.dq_reason, detail: match.dq_detail };
 		case 'forfeit':
-			return 'Opponent withdrew';
+			return { kind: 'forfeit' };
 		case 'draw':
-			return `Tied ${scoreLine}`;
+			return { kind: 'tied', top, bottom };
 	}
 }
 

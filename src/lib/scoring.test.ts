@@ -6,7 +6,7 @@ import {
 	getF2EffectivePoints,
 	getLeader,
 	getRemainingSeconds,
-	getWinMethod,
+	getOutcome,
 	getWinner,
 	getWinnerName,
 	isLegacyResult,
@@ -66,7 +66,10 @@ describe('the winner the event names', () => {
 		expect(getWinner(m)).toBe(2);
 		expect(getWinnerName(m)).toBe('Carlos');
 		expect(m.submission).toBe('armbar');
-		expect(getWinMethod(m)).toEqual({ method: 'SUBMISSION', detail: 'Armbar' });
+		expect(getOutcome(m)).toEqual({
+			method: 'submission',
+			detail: { kind: 'submission', submission: 'armbar' }
+		});
 	});
 
 	it('beats the scoreboard on a disqualification', () => {
@@ -79,9 +82,9 @@ describe('the winner the event names', () => {
 		});
 
 		expect(getWinner(m)).toBe(1);
-		expect(getWinMethod(m)).toEqual({
-			method: 'DISQUALIFICATION',
-			detail: 'technical foul — knee reap'
+		expect(getOutcome(m)).toEqual({
+			method: 'dq',
+			detail: { kind: 'dq', reason: 'technical_foul', detail: 'knee reap' }
 		});
 	});
 
@@ -92,7 +95,7 @@ describe('the winner the event names', () => {
 		// Assert
 		expect(getWinner(m)).toBe(0);
 		expect(getWinnerName(m)).toBeNull();
-		expect(getWinMethod(m).method).toBe('DRAW');
+		expect(getOutcome(m).method).toBe('draw');
 	});
 
 	it('names nobody while the match is still running', () => {
@@ -106,9 +109,13 @@ describe('the winner the event names', () => {
 		// mean anything.
 		const m = match({ winner: 'f2', method: 'submission', submission: 'rear_naked_choke' });
 
-		// Assert — and it is exactly why this board must not print the id. The wall
-		// is the one place a raw value gets read by a room full of people.
-		expect(getWinMethod(m)).toEqual({ method: 'SUBMISSION', detail: 'Rear naked choke' });
+		// Assert — scoring carries the id and nothing else. What a room full of
+		// people actually READS is chosen in i18n/outcome.ts, which is the only
+		// place that knows the language — see outcome.test.ts.
+		expect(getOutcome(m)).toEqual({
+			method: 'submission',
+			detail: { kind: 'submission', submission: 'rear_naked_choke' }
+		});
 	});
 
 	it('prints a technique it has never heard of exactly as written', () => {
@@ -116,7 +123,7 @@ describe('the winner the event names', () => {
 		// would be hiding the most interesting thing that happened all day.
 		const m = match({ winner: 'f2', method: 'submission', submission: 'baratoplata' });
 
-		expect(getWinMethod(m).detail).toBe('baratoplata');
+		expect(getOutcome(m).detail).toEqual({ kind: 'submission', submission: 'baratoplata' });
 	});
 
 	it('reports a submission with no technique recorded', () => {
@@ -124,7 +131,7 @@ describe('the winner the event names', () => {
 		// ending a match because the app has never heard of a baratoplata
 		const m = match({ winner: 'f2', method: 'submission' });
 
-		expect(getWinMethod(m)).toEqual({ method: 'SUBMISSION', detail: 'Submitted' });
+		expect(getOutcome(m)).toEqual({ method: 'submission', detail: { kind: 'submission' } });
 	});
 });
 
@@ -187,7 +194,7 @@ describe('the winner and the reason never contradict each other', () => {
 		// match "decided on advantages" for Carlos. Comparing raw advantages
 		// here (0–0) would have called it a DRAW while getWinner named Bob.
 		expect(getWinner(m)).toBe(1);
-		expect(getWinMethod(m).method).toBe('ADVANTAGE');
+		expect(getOutcome(m).method).toBe('advantages');
 	});
 });
 
@@ -224,7 +231,10 @@ describe('legacy events are not re-refereed', () => {
 	it('still describes them, because they cannot describe themselves', () => {
 		const legacy = match({ f1_pt2: 1, ended_at: undefined });
 
-		expect(getWinMethod(legacy)).toEqual({ method: 'POINTS', detail: '2 × 0' });
+		expect(getOutcome(legacy)).toEqual({
+			method: 'points',
+			detail: { kind: 'score', top: 2, bottom: 0 }
+		});
 	});
 
 	it('a live match is never legacy, whatever it carries', () => {

@@ -8,12 +8,13 @@
 		getF1EffectivePoints,
 		getF2EffectiveAdvantages,
 		getF2EffectivePoints,
-		getWinMethod,
+		getOutcome,
 		getWinner,
 		isMatchPaused
 	} from '$lib/scoring.js';
 	import { alpha, sanitizeColor } from '$lib/colors.js';
 	import { t } from '$lib/i18n/index.js';
+	import { formatOutcome } from '$lib/i18n/outcome.js';
 	import Timer from '../../../components/Timer.svelte';
 	import type { MatchEvent } from '$lib/types.js';
 
@@ -86,7 +87,7 @@
 	 * loser — on a wall, in a room full of people.
 	 */
 	let winner = $derived(match ? getWinner(match) : 0);
-	let result = $derived(match && isFinal ? getWinMethod(match) : null);
+	let result = $derived(match && isFinal ? formatOutcome($t, getOutcome(match)) : null);
 
 	let f1Color = $derived(sanitizeColor(match?.f1_color, DEFAULT_F1_COLOR));
 	let f2Color = $derived(sanitizeColor(match?.f2_color, DEFAULT_F2_COLOR));

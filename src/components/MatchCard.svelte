@@ -6,12 +6,13 @@
 		getF2EffectiveAdvantages,
 		getF2EffectivePoints,
 		getLeader,
-		getWinMethod,
+		getOutcome,
 		getWinner,
 		isMatchPaused
 	} from '$lib/scoring.js';
 	import { sanitizeColor } from '$lib/colors.js';
 	import { t } from '$lib/i18n/index.js';
+	import { formatOutcome } from '$lib/i18n/outcome.js';
 	import StatusBadge from './StatusBadge.svelte';
 	import Timer from './Timer.svelte';
 	import { base } from '$app/paths';
@@ -37,7 +38,13 @@
 	let leader = $derived(
 		match.status === 'finished' ? getWinner(match) : getLeader(match)
 	);
-	let outcome = $derived(match.method ? getWinMethod(match) : null);
+	// Keyed on the status, not on `method`. A legacy event — one that finished
+	// before outcomes existed — carries no method, and this card answered that by
+	// showing nothing at all, while the broadcast wall described the same match
+	// from the scoreboard. One match, two screens, two different stories.
+	let outcome = $derived(
+		match.status === 'finished' ? formatOutcome($t, getOutcome(match)) : null
+	);
 	let isCanceled = $derived(match.status === 'canceled');
 	let isLive = $derived(match.status === 'in-progress');
 	let isPaused = $derived(isMatchPaused(match));

@@ -90,6 +90,65 @@ export const en = {
 	'match.notFoundBody': "This match may not exist or hasn't been loaded yet.",
 	'match.backToScoreboard': 'Back to scoreboard',
 
+	// ─── How a match was won ────────────────────────────────────────────────
+	//
+	// The keys are the wire ids and the values are for humans. scoring.ts hands
+	// the view an id and two numbers; every word below is chosen here.
+	'method.submission': 'SUBMISSION',
+	'method.points': 'POINTS',
+	'method.advantages': 'ADVANTAGE',
+	'method.decision': 'DECISION',
+	'method.dq': 'DISQUALIFICATION',
+	'method.forfeit': 'FORFEIT',
+	'method.draw': 'DRAW',
+
+	// The submissions, by the id the referee's app publishes.
+	//
+	// The app is translated and the data is not: a referee taps *chave de braço*
+	// in São Paulo and 腕十字固め in Tokyo, and both events say `armbar`. That is
+	// what makes counting armbars across a tournament mean anything — and it is
+	// why the board must never print the id itself. A technique nobody has a key
+	// for is shown exactly as the referee typed it (see outcome.ts): the field is
+	// free text on purpose, and a board that blanked on a baratoplata would be
+	// hiding the most interesting thing that happened all day.
+	'submission.armbar': 'Armbar',
+	'submission.rear_naked_choke': 'Rear naked choke',
+	'submission.triangle': 'Triangle choke',
+	'submission.guillotine': 'Guillotine',
+	'submission.kimura': 'Kimura',
+	'submission.americana': 'Americana',
+	'submission.cross_collar_choke': 'Cross collar choke',
+	'submission.bow_and_arrow': 'Bow and arrow choke',
+	'submission.ezekiel': 'Ezekiel choke',
+	'submission.omoplata': 'Omoplata',
+	'submission.arm_triangle': 'Arm triangle',
+	'submission.north_south_choke': 'North–south choke',
+	'submission.straight_ankle_lock': 'Straight ankle lock',
+	'submission.heel_hook': 'Heel hook',
+	'submission.toe_hold': 'Toe hold',
+
+	// Why a fighter was disqualified. What they actually DID is free text from
+	// the referee ('knee reap') and is never translated.
+	'dq.accumulated_penalties': 'four penalties',
+	'dq.technical_foul': 'technical foul',
+	'dq.disciplinary_foul': 'disciplinary foul',
+
+	// The outcome line under the score. The numbers go INSIDE the message: a
+	// language that writes `4 a 0`, or puts the word before the score, can.
+	'outcome.score': (top: number, bottom: number) => `${top} × ${bottom}`,
+	'outcome.tied': (top: number, bottom: number) => `Tied ${top} × ${bottom}`,
+	'outcome.tiedAdvantages': (top: number, bottom: number) =>
+		`Tied ${top} × ${bottom} — decided on advantages`,
+	'outcome.tiedDecision': (top: number, bottom: number) =>
+		`Tied ${top} × ${bottom} — referee decision`,
+	'outcome.submitted': 'Submitted',
+	'outcome.disqualified': 'disqualified',
+	'outcome.forfeit': 'Opponent withdrew',
+
+	// A translated reason joined to untranslated referee text. The join itself is
+	// a message, because even the dash is a choice a language gets to make.
+	'outcome.dqDetail': (reason: string, detail: string) => `${reason} — ${detail}`,
+
 	// ─── Errors ─────────────────────────────────────────────────────────────
 	//
 	// `+error.svelte` catches every route error, not just 404s: a 404 is "Page
