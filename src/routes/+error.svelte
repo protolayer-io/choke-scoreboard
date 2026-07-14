@@ -14,12 +14,16 @@
 		});
 		return unsub;
 	});
+
+	// This page catches every route error, not only 404s. A 404 is "Page not
+	// found"; a 500 or a load that threw is not, and must not say it was.
+	let message = $derived(statusCode === 404 ? $t('error.pageNotFound') : $t('error.somethingWrong'));
 </script>
 
 <div class="flex min-h-[60vh] flex-col items-center justify-center text-center">
 	<span class="text-6xl">🥋</span>
 	<h1 class="mt-4 text-4xl font-bold" style="color: var(--text-primary);">{statusCode}</h1>
-	<p class="mt-2 text-lg" style="color: var(--text-secondary);">{$t('error.pageNotFound')}</p>
+	<p class="mt-2 text-lg" style="color: var(--text-secondary);">{message}</p>
 	<a
 		href="{base}/"
 		class="mt-6 rounded-lg px-5 py-2.5 text-sm font-semibold text-white no-underline transition-colors hover:opacity-90"

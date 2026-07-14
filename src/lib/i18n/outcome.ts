@@ -61,8 +61,14 @@ const SUBMISSION_KEYS: Record<string, MessageKey> = {
  * be hiding the most interesting thing that happened all day.
  */
 function submissionLabel(t: Translate, submission: string): string {
-	const key = SUBMISSION_KEYS[submission];
-	return key ? t(key as 'submission.armbar') : submission;
+	// Object.hasOwn, and not a truthiness check on the lookup: `submission` is
+	// free text typed by a referee, and a plain object answers for every key on
+	// Object.prototype. A referee typing 'constructor' or 'toString' gets a truthy
+	// *function* back, never reaches the fallback below, and puts the word
+	// `undefined` on a wall in front of the room.
+	if (!Object.hasOwn(SUBMISSION_KEYS, submission)) return submission;
+
+	return t(SUBMISSION_KEYS[submission] as 'submission.armbar');
 }
 
 export function formatOutcome(

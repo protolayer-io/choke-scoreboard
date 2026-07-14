@@ -64,6 +64,18 @@ describe('saying how a match was won, in English, exactly as before', () => {
 		expect(said.detail).toBe('baratoplata');
 	});
 
+	it('prints a technique named after something on Object.prototype', () => {
+		// `submission` is free text from the referee, and it indexes a plain object.
+		// A referee who types 'constructor' hits Object.prototype, the lookup comes
+		// back truthy, and the fallback to their own words never runs — the wall
+		// shows the word `undefined` in front of the room.
+		for (const typed of ['constructor', 'toString', '__proto__']) {
+			const said = say({ winner: 'f1', method: 'submission', submission: typed });
+
+			expect(said.detail).toBe(typed);
+		}
+	});
+
 	it('says a submission with no technique recorded', () => {
 		expect(say({ winner: 'f2', method: 'submission' })).toEqual({
 			method: 'SUBMISSION',

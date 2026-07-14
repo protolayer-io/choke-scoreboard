@@ -38,7 +38,13 @@
 	let leader = $derived(
 		match.status === 'finished' ? getWinner(match) : getLeader(match)
 	);
-	let outcome = $derived(match.method ? formatOutcome($t, getOutcome(match)) : null);
+	// Keyed on the status, not on `method`. A legacy event — one that finished
+	// before outcomes existed — carries no method, and this card answered that by
+	// showing nothing at all, while the broadcast wall described the same match
+	// from the scoreboard. One match, two screens, two different stories.
+	let outcome = $derived(
+		match.status === 'finished' ? formatOutcome($t, getOutcome(match)) : null
+	);
 	let isCanceled = $derived(match.status === 'canceled');
 	let isLive = $derived(match.status === 'in-progress');
 	let isPaused = $derived(isMatchPaused(match));

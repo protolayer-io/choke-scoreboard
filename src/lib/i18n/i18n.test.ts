@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { en } from './en.js';
 import {
+	defineCatalog,
 	detectLocale,
 	LOCALES,
 	locale,
@@ -62,6 +63,30 @@ describe('translating', () => {
  * one message the translator owns, and the rule has to come from
  * Intl.PluralRules instead of a `!== 1 ? 'es' : ''` glued onto a template.
  */
+/**
+ * A missing key already fails the build; the harder failure is a key that is
+ * present but dropped a parameter — `home.matchCount: () => 'matches'` typechecks
+ * against a plain function type, and the number is gone. `defineCatalog` is what
+ * closes that gap, and these `@ts-expect-error`s fail `svelte-check` if it ever
+ * stops closing it. (Vitest strips types, so at runtime these calls just pass.)
+ */
+describe('defineCatalog enforces parameter arity', () => {
+	it('accepts a catalog whose messages keep every parameter', () => {
+		const catalog = defineCatalog({ ...en });
+
+		expect(catalog['status.live']).toBe('LIVE');
+	});
+
+	it('rejects a message that dropped its count or a fighter', () => {
+		// @ts-expect-error — home.matchCount lost its `count`
+		defineCatalog({ ...en, 'home.matchCount': () => 'matches' });
+		// @ts-expect-error — title.match lost its second fighter
+		defineCatalog({ ...en, 'title.match': (f1: string) => f1 });
+
+		expect(true).toBe(true);
+	});
+});
+
 describe('counting matches', () => {
 	it('says one match in the singular', () => {
 		expect(get(t)('home.matchCount', 1)).toBe('1 match');

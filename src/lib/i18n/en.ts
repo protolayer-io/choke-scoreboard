@@ -159,7 +159,11 @@ export const en = {
 	'outcome.dqDetail': (reason: string, detail: string) => `${reason} — ${detail}`,
 
 	// ─── Errors ─────────────────────────────────────────────────────────────
+	//
+	// `+error.svelte` catches every route error, not just 404s: a 404 is "Page
+	// not found", anything else (a 500, a load that threw) is the generic line.
 	'error.pageNotFound': 'Page not found',
+	'error.somethingWrong': 'Something went wrong',
 	'error.backToScoreboard': 'Back to Scoreboard',
 
 	// ─── Page titles ────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import type { Catalog } from './index.js';
+import { defineCatalog } from './index.js';
 import { plural } from './plural.js';
 
 /**
@@ -13,7 +13,7 @@ import { plural } from './plural.js';
  *
  * `heel_hook` and `toe_hold` stay in English, as they are said on the mat.
  */
-export const pt: Catalog = {
+export const pt = defineCatalog({
 	// ─── Chrome ─────────────────────────────────────────────────────────────
 	'app.name': 'Choke Scoreboard',
 	'app.description': 'Placar de jiu-jítsu brasileiro em tempo real via Nostr',
@@ -126,10 +126,11 @@ export const pt: Catalog = {
 
 	// ─── Erros ──────────────────────────────────────────────────────────────
 	'error.pageNotFound': 'Página não encontrada',
+	'error.somethingWrong': 'Algo deu errado',
 	'error.backToScoreboard': 'Voltar ao placar',
 
 	// ─── Títulos ────────────────────────────────────────────────────────────
 	'title.home': '🥋 Choke Scoreboard',
 	'title.match': (f1: string, f2: string) => `${f1} vs ${f2} — Choke Scoreboard`,
 	'title.matchFallback': 'Luta — Choke Scoreboard'
-};
+});
