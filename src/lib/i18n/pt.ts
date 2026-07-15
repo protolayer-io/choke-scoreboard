@@ -22,7 +22,7 @@ export const pt = defineCatalog({
 	'language.en': 'English',
 	'language.es': 'Español',
 	'language.pt': 'Português',
-	'footer.tagline': 'Placar de BJJ em tempo real via',
+	'footer.builtBy': 'Feito por',
 
 	// ─── Conexão com o organizador ──────────────────────────────────────────
 	'pubkey.placeholder': 'Digite a npub ou chave pública hex do organizador...',

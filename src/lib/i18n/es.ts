@@ -17,7 +17,7 @@ export const es = defineCatalog({
 	'language.en': 'English',
 	'language.es': 'Español',
 	'language.pt': 'Português',
-	'footer.tagline': 'Puntuación de BJJ en tiempo real vía',
+	'footer.builtBy': 'Hecho por',
 
 	// ─── Conexión con el organizador ────────────────────────────────────────
 	'pubkey.placeholder': 'Ingresá la npub o clave pública hex del organizador...',

@@ -46,7 +46,7 @@
 			{@render children()}
 		</main>
 		<footer class="border-t py-4 text-center text-xs" style="border-color: var(--border-color); color: var(--text-secondary);">
-			<p>🥋 {$t('app.name')} — {$t('footer.tagline')} <a href="https://nostr.com" target="_blank" class="underline hover:opacity-80" style="color: var(--color-green-live);">Nostr</a></p>
+			<p>🥋 {$t('app.name')} — {$t('footer.builtBy')} <a href="https://protolayer.io" target="_blank" rel="noopener noreferrer" class="underline hover:opacity-80" style="color: var(--color-green-live);">ProtoLayer.io</a></p>
 		</footer>
 	</div>
 {/if}

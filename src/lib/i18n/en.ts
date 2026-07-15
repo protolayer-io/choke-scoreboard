@@ -28,7 +28,7 @@ export const en = {
 	'language.es': 'Español',
 	'language.pt': 'Português',
 
-	'footer.tagline': 'Real-time BJJ scoring via',
+	'footer.builtBy': 'Built by',
 
 	// ─── Connecting to an organizer ─────────────────────────────────────────
 	'pubkey.placeholder': 'Enter organizer npub or hex pubkey...',
