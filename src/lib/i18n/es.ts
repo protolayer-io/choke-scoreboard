@@ -92,7 +92,7 @@ export const es = defineCatalog({
 	// Las sumisiones. `heel_hook` y `toe_hold` quedan en inglés porque así se
 	// dicen en el tatami: traducirlas se leería más raro que dejarlas. Los ids del
 	// cable no cambian nunca — solo cambia lo que se lee en la pared.
-	'submission.armbar': 'Palanca de brazo',
+	'submission.armbar': 'Llave de brazo',
 	'submission.rear_naked_choke': 'Mataleón',
 	'submission.triangle': 'Triángulo',
 	'submission.guillotine': 'Guillotina',
@@ -106,7 +106,7 @@ export const es = defineCatalog({
 	'submission.north_south_choke': 'Estrangulación norte–sur',
 	'submission.straight_ankle_lock': 'Llave recta de tobillo',
 	'submission.heel_hook': 'Heel hook',
-	'submission.toe_hold': 'Toe hold',
+	'submission.toe_hold': 'Americana de pie',
 
 	'dq.accumulated_penalties': 'cuatro penalizaciones',
 	'dq.technical_foul': 'falta técnica',
