@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { theme } from '$lib/stores.js';
 	import { t } from '$lib/i18n/index.js';
+	import { base } from '$app/paths';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 
 	function toggleTheme(): void {
@@ -19,41 +20,53 @@
 		});
 		return unsub;
 	});
+
+	// The wordmark is two-tone (design 2A): the first word bright, the rest
+	// muted. The brand is never translated, but it still comes through the
+	// catalog so there is exactly one place that spells it.
+	let brandFirst = $derived($t('app.name').split(' ')[0]);
+	let brandRest = $derived($t('app.name').split(' ').slice(1).join(' '));
 </script>
 
 <header
-	class="sticky top-0 z-50 border-b px-4 py-3 backdrop-blur-sm"
-	style="background-color: var(--bg-secondary); border-color: var(--border-color);"
+	class="sticky top-0 z-50 border-b backdrop-blur-sm"
+	style="background: var(--header-bg); border-color: var(--border-color); padding: 18px 30px;"
 >
 	<div class="mx-auto flex max-w-6xl items-center justify-between">
-		<a href="/" class="flex items-center gap-2 text-xl font-bold no-underline" style="color: var(--text-primary);">
-			<span class="text-2xl">🥋</span>
-			<span>{$t('app.name')}</span>
+		<a href="{base}/" class="flex items-center no-underline" style="gap: 14px;">
+			<img
+				src="{base}/choke.png"
+				alt=""
+				width="46"
+				height="46"
+				style="width: 46px; height: 46px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 0 22px rgba(168,85,247,.35);"
+			/>
+			<span
+				style="font-family: 'Barlow Condensed', system-ui, sans-serif; font-weight: 800; font-size: 27px; line-height: 1; letter-spacing: .02em; color: var(--text-primary);"
+			>
+				{brandFirst}
+				{#if brandRest}
+					<span style="color: var(--text-secondary); font-weight: 600;">{brandRest}</span>
+				{/if}
+			</span>
 		</a>
 
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-3">
 			<LanguageSwitcher />
 
 			<button
 				onclick={toggleTheme}
-				class="rounded-lg p-2 transition-colors hover:opacity-80"
-				style="background-color: var(--bg-input); color: var(--text-primary);"
+				class="flex items-center justify-center transition-colors hover:opacity-80"
+				style="width: 40px; height: 40px; border-radius: 10px; background: var(--pill-bg); border: 1px solid var(--pill-border); color: var(--icon-muted);"
 				aria-label={$t('header.toggleTheme')}
 			>
 			{#if currentTheme === 'dark'}
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<circle cx="12" cy="12" r="5" />
-					<line x1="12" y1="1" x2="12" y2="3" />
-					<line x1="12" y1="21" x2="12" y2="23" />
-					<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-					<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-					<line x1="1" y1="12" x2="3" y2="12" />
-					<line x1="21" y1="12" x2="23" y2="12" />
-					<line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-					<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+				<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+					<circle cx="12" cy="12" r="4" />
+					<path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
 				</svg>
 			{:else}
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2">
 					<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
 				</svg>
 				{/if}

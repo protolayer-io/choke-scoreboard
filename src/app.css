@@ -77,14 +77,44 @@
   }
 }
 
+/* Dark palette from design 2A: near-black app surface, navy cards, hairline
+   borders. The light theme below is untouched — the design is dark-first. */
 :root {
-  --bg-primary: #121A2E;
-  --bg-secondary: #1a2540;
-  --bg-card: #1a2540;
-  --bg-input: #243054;
+  --bg-primary: #0a0f1c;
+  --bg-secondary: #0c1226;
+  --bg-card: #0b1120;
+  --bg-input: #12203a;
   --text-primary: #ffffff;
-  --text-secondary: #9ca3af;
-  --border-color: #374151;
+  --text-secondary: #8b97b8;
+  --border-color: rgba(255, 255, 255, 0.07);
+  /* Frosted pills (language selector, theme toggle, connection bar) */
+  --pill-bg: rgba(255, 255, 255, 0.04);
+  --pill-border: rgba(255, 255, 255, 0.1);
+  --header-bg: linear-gradient(180deg, #0f1730, #0c1226);
+  /* Muted chrome icons and links: the design's exact dark values, with
+     light-mode counterparts dark enough to actually read. */
+  --icon-muted: #c3cde4;
+  --link-color: #7dd3fc;
+  /* Status-filter chips (design 2A). Dark holds the mock's exact values; the
+     light block below swaps in colors that survive a white page. */
+  --chip-live-bg: rgba(22, 192, 95, 0.16);
+  --chip-live-border: rgba(22, 192, 95, 0.55);
+  --chip-live-text: #3ee08a;
+  --chip-wait-bg: rgba(244, 180, 0, 0.14);
+  --chip-wait-border: rgba(244, 180, 0, 0.5);
+  --chip-wait-text: #f4c453;
+  --chip-done-bg: rgba(255, 255, 255, 0.06);
+  --chip-done-border: rgba(255, 255, 255, 0.2);
+  --chip-done-text: #cdd8ef;
+  --chip-cancel-bg: rgba(239, 68, 68, 0.14);
+  --chip-cancel-border: rgba(239, 68, 68, 0.5);
+  --chip-cancel-text: #fca5a5;
+  --chip-off-border: rgba(255, 255, 255, 0.12);
+  --chip-off-text: #6b7890;
+  /* Destructive actions (Disconnect) */
+  --danger-bg: rgba(239, 68, 68, 0.16);
+  --danger-border: rgba(239, 68, 68, 0.5);
+  --danger-text: #fca5a5;
 }
 
 :root.light {
@@ -95,6 +125,28 @@
   --text-primary: #111827;
   --text-secondary: #6b7280;
   --border-color: #d1d5db;
+  --pill-bg: #e5e7eb;
+  --pill-border: #d1d5db;
+  --header-bg: #ffffff;
+  --icon-muted: #6b7280;
+  --link-color: #0369a1;
+  --chip-live-bg: rgba(22, 192, 95, 0.12);
+  --chip-live-border: rgba(4, 120, 87, 0.45);
+  --chip-live-text: #047857;
+  --chip-wait-bg: rgba(244, 180, 0, 0.15);
+  --chip-wait-border: rgba(146, 64, 14, 0.4);
+  --chip-wait-text: #92400e;
+  --chip-done-bg: rgba(0, 0, 0, 0.05);
+  --chip-done-border: rgba(0, 0, 0, 0.2);
+  --chip-done-text: #374151;
+  --chip-cancel-bg: rgba(239, 68, 68, 0.1);
+  --chip-cancel-border: rgba(185, 28, 28, 0.4);
+  --chip-cancel-text: #b91c1c;
+  --chip-off-border: rgba(0, 0, 0, 0.15);
+  --chip-off-text: #6b7280;
+  --danger-bg: rgba(239, 68, 68, 0.08);
+  --danger-border: rgba(185, 28, 28, 0.4);
+  --danger-text: #b91c1c;
 }
 
 body {

@@ -146,15 +146,27 @@
 			</button>
 		</div>
 	{:else}
-		<div class="flex items-center justify-between rounded-lg border px-4 py-2" style="background-color: var(--bg-input); border-color: var(--border-color);">
-			<div class="flex items-center gap-2 text-sm" style="color: var(--text-secondary);">
-				<span class="h-2 w-2 rounded-full" style="background-color: var(--color-green-live);"></span>
-				<span class="truncate max-w-xs font-mono text-xs">{connectedDisplay || $t('pubkey.connected')}</span>
+		<!-- Connection pill (design 2A): glowing dot, the npub in a mono face,
+		     and a red Disconnect. -->
+		<div
+			class="flex items-center justify-between gap-3.5"
+			style="padding: 13px 16px 13px 20px; border-radius: 12px; background: var(--pill-bg); border: 1px solid var(--pill-border);"
+		>
+			<div class="flex min-w-0 items-center" style="gap: 11px;">
+				<span
+					class="flex-none rounded-full"
+					style="width: 9px; height: 9px; background: #16c05f; box-shadow: 0 0 12px #16c05f;"
+				></span>
+				<span
+					class="truncate"
+					style="font-family: 'Chakra Petch', monospace; font-weight: 500; font-size: 16px; color: var(--text-secondary);"
+					>{connectedDisplay || $t('pubkey.connected')}</span
+				>
 			</div>
 			<button
 				onclick={handleDisconnect}
-				class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
-				style="background-color: var(--color-red-penalty, #C0392B); color: white;"
+				class="flex-none cursor-pointer transition-colors hover:opacity-80"
+				style="padding: 9px 18px; border-radius: 9px; background: var(--danger-bg); border: 1px solid var(--danger-border); font-family: 'Barlow Condensed', system-ui, sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .05em; color: var(--danger-text);"
 			>
 				{$t('pubkey.disconnect')}
 			</button>

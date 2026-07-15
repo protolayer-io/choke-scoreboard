@@ -33,7 +33,7 @@ export const en = {
 	// ─── Connecting to an organizer ─────────────────────────────────────────
 	'pubkey.placeholder': 'Enter organizer npub or hex pubkey...',
 	'pubkey.load': 'Load',
-	'pubkey.debugMode': '🐛 Debug Mode',
+	'pubkey.debugMode': 'Debug Mode',
 	'pubkey.connected': 'Connected',
 	'pubkey.disconnect': 'Disconnect',
 
@@ -48,8 +48,16 @@ export const en = {
 			one: `${count} match`,
 			other: `${count} matches`
 		}),
-	'home.viewBroadcast': '📺 Broadcast',
-	'home.viewCompact': '📋 Compact',
+	// The word alone, for the toolbar where the number is typeset separately and
+	// four times larger (design 2A). `home.matchCount` above stays for anywhere
+	// that wants the whole phrase.
+	'home.matchesWord': (count: number) =>
+		plural('en', count, {
+			one: 'match',
+			other: 'matches'
+		}),
+	'home.viewBroadcast': 'Broadcast',
+	'home.viewCompact': 'Compact',
 	'home.connecting': 'Connecting to relays...',
 	'home.emptyTitle': 'No matches found',
 	'home.emptyBody': 'Waiting for match events from the organizer...',
@@ -69,6 +77,10 @@ export const en = {
 	// has one line to say it in, and says it shorter. Two keys, on purpose.
 	'status.waiting': 'WAITING',
 	'status.live': 'LIVE',
+	// The strip along the bottom of a live card (design 2A). LIVE is the badge;
+	// this is the sentence under it, and some languages will not want the same
+	// word twice.
+	'status.inProgress': 'IN PROGRESS',
 	'status.paused': 'PAUSED',
 	'status.finished': 'FINISHED',
 	'status.final': 'FINAL',

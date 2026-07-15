@@ -27,7 +27,7 @@ export const pt = defineCatalog({
 	// ─── Conexão com o organizador ──────────────────────────────────────────
 	'pubkey.placeholder': 'Digite a npub ou chave pública hex do organizador...',
 	'pubkey.load': 'Carregar',
-	'pubkey.debugMode': '🐛 Modo debug',
+	'pubkey.debugMode': 'Modo debug',
 	'pubkey.connected': 'Conectado',
 	'pubkey.disconnect': 'Desconectar',
 	'pubkey.error.invalidNpub': 'Formato de npub inválido',
@@ -44,8 +44,14 @@ export const pt = defineCatalog({
 			one: `${count} luta`,
 			other: `${count} lutas`
 		}),
-	'home.viewBroadcast': '📺 Transmissão',
-	'home.viewCompact': '📋 Compacta',
+	'home.matchesWord': (count: number) =>
+		plural('pt', count, {
+			zero: 'lutas',
+			one: 'luta',
+			other: 'lutas'
+		}),
+	'home.viewBroadcast': 'Transmissão',
+	'home.viewCompact': 'Compacta',
 	'home.connecting': 'Conectando aos relays...',
 	'home.emptyTitle': 'Nenhuma luta encontrada',
 	'home.emptyBody': 'Aguardando eventos de luta do organizador...',
@@ -60,6 +66,7 @@ export const pt = defineCatalog({
 	// ─── Estado da luta ─────────────────────────────────────────────────────
 	'status.waiting': 'AGUARDANDO',
 	'status.live': 'AO VIVO',
+	'status.inProgress': 'EM ANDAMENTO',
 	'status.paused': 'PAUSADA',
 	'status.finished': 'ENCERRADA',
 	'status.final': 'FINAL',

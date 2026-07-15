@@ -45,8 +45,20 @@
 		<main class="flex-1">
 			{@render children()}
 		</main>
-		<footer class="border-t py-4 text-center text-xs" style="border-color: var(--border-color); color: var(--text-secondary);">
-			<p>🥋 {$t('app.name')} — {$t('footer.builtBy')} <a href="https://protolayer.io" target="_blank" rel="noopener noreferrer" class="underline hover:opacity-80" style="color: var(--color-green-live);">ProtoLayer.io</a></p>
+		<footer
+			class="border-t text-center"
+			style="border-color: var(--border-color); padding: 20px 0 24px; font-family: 'Barlow Condensed', system-ui, sans-serif; font-weight: 500; font-size: 16px; color: #6b7890;"
+		>
+			<p>
+				{$t('app.name')} — {$t('footer.builtBy')}
+				<a
+					href="https://protolayer.io"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="no-underline hover:opacity-80"
+					style="color: var(--link-color);">ProtoLayer.io</a
+				>
+			</p>
 		</footer>
 	</div>
 {/if}
