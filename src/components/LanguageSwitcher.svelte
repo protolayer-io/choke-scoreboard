@@ -34,7 +34,7 @@
 	<select
 		value={$locale}
 		onchange={onChange}
-		class="cursor-pointer appearance-none border-0 bg-transparent pr-4 focus:outline-none"
+		class="cursor-pointer appearance-none rounded border-0 bg-transparent pr-4 focus-visible:outline-2 focus-visible:outline-offset-2"
 		style="font-family: 'Barlow Condensed', system-ui, sans-serif; font-weight: 600; font-size: 16px; color: #c3cde4;"
 	>
 		{#each LOCALES as code (code)}

@@ -46,7 +46,7 @@
 			>
 				{brandFirst}
 				{#if brandRest}
-					<span style="color: #8b97b8; font-weight: 600;">{brandRest}</span>
+					<span style="color: var(--text-secondary); font-weight: 600;">{brandRest}</span>
 				{/if}
 			</span>
 		</a>
@@ -57,7 +57,7 @@
 			<button
 				onclick={toggleTheme}
 				class="flex items-center justify-center transition-colors hover:opacity-80"
-				style="width: 40px; height: 40px; border-radius: 10px; background: var(--pill-bg); border: 1px solid var(--pill-border); color: #c3cde4;"
+				style="width: 40px; height: 40px; border-radius: 10px; background: var(--pill-bg); border: 1px solid var(--pill-border); color: var(--icon-muted);"
 				aria-label={$t('header.toggleTheme')}
 			>
 			{#if currentTheme === 'dark'}

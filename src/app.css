@@ -91,6 +91,10 @@
   --pill-bg: rgba(255, 255, 255, 0.04);
   --pill-border: rgba(255, 255, 255, 0.1);
   --header-bg: linear-gradient(180deg, #0f1730, #0c1226);
+  /* Muted chrome icons and links: the design's exact dark values, with
+     light-mode counterparts dark enough to actually read. */
+  --icon-muted: #c3cde4;
+  --link-color: #7dd3fc;
 }
 
 :root.light {
@@ -104,6 +108,8 @@
   --pill-bg: #e5e7eb;
   --pill-border: #d1d5db;
   --header-bg: #ffffff;
+  --icon-muted: #6b7280;
+  --link-color: #0369a1;
 }
 
 body {

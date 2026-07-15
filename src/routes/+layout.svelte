@@ -56,7 +56,7 @@
 					target="_blank"
 					rel="noopener noreferrer"
 					class="no-underline hover:opacity-80"
-					style="color: #7dd3fc;">ProtoLayer.io</a
+					style="color: var(--link-color);">ProtoLayer.io</a
 				>
 			</p>
 		</footer>

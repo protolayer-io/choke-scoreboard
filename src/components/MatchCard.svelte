@@ -92,8 +92,10 @@
 	// armbar, and every number on this card will still favour the loser. While
 	// the match runs, both sides stay bright (design 2A) — the card does not
 	// guess.
-	let winner = $derived(isFinished ? getWinner(match) : null);
-	let decided = $derived(winner !== null);
+	// getWinner() answers 0 for a draw (and for a stated method with no winner):
+	// nobody won, so nobody dims. Only a real 1 or 2 turns the loser gray.
+	let winner = $derived(isFinished ? getWinner(match) : 0);
+	let decided = $derived(winner === 1 || winner === 2);
 
 	// Keyed on the status, not on `method`: a legacy event that finished before
 	// outcomes existed still gets its line.
