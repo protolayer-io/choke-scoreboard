@@ -107,10 +107,13 @@
 	let pill = $derived(isLive && isPaused ? PAUSED_STYLE : STATUS_STYLES[match.status]);
 
 	// Winner white, loser sunk into the background; undecided keeps both bright.
-	let f1NameColor = $derived(decided ? (winner === 1 ? '#ffffff' : '#66738f') : 'var(--text-primary)');
-	let f2NameColor = $derived(decided ? (winner === 2 ? '#ffffff' : '#66738f') : 'var(--text-primary)');
-	let f1ScoreColor = $derived(decided ? (winner === 1 ? f1Color : '#414d68') : 'var(--text-primary)');
-	let f2ScoreColor = $derived(decided ? (winner === 2 ? f2Color : '#414d68') : 'var(--text-primary)');
+	// Literal white, not var(--text-primary): the card is dark in BOTH themes
+	// (it is a scoreboard, like the broadcast view), so the token would paint
+	// near-black text on a navy card the moment the light theme loaded.
+	let f1NameColor = $derived(decided ? (winner === 1 ? '#ffffff' : '#66738f') : '#ffffff');
+	let f2NameColor = $derived(decided ? (winner === 2 ? '#ffffff' : '#66738f') : '#ffffff');
+	let f1ScoreColor = $derived(decided ? (winner === 1 ? f1Color : '#414d68') : '#ffffff');
+	let f2ScoreColor = $derived(decided ? (winner === 2 ? f2Color : '#414d68') : '#ffffff');
 
 	// The corner clock (design 2A): a finished card shows how long the match
 	// was, a waiting or canceled one has nothing to say yet, and a live one
@@ -123,7 +126,7 @@
 	class="relative block overflow-hidden no-underline transition-transform duration-200 hover:scale-[1.01] {isCanceled
 		? 'opacity-50'
 		: ''}"
-	style="border-radius: 16px; background: var(--bg-card); border: 1px solid var(--border-color); box-shadow: 0 10px 28px rgba(0,0,0,.35); font-family: 'Barlow Condensed', system-ui, sans-serif;"
+	style="border-radius: 16px; background: #0b1120; border: 1px solid rgba(255,255,255,.07); box-shadow: 0 10px 28px rgba(0,0,0,.35); font-family: 'Barlow Condensed', system-ui, sans-serif;"
 >
 	<!-- Per-fighter color washes and edge bars: the fighter's color is the
 	     protagonist (design 2A). -->
@@ -250,7 +253,7 @@
 	{#if outcome}
 		<div
 			class="relative flex items-center justify-center"
-			style="margin-top: 8px; padding: 12px 22px; border-top: 1px solid var(--border-color); gap: 12px; background: rgba(255,255,255,.015);"
+			style="margin-top: 8px; padding: 12px 22px; border-top: 1px solid rgba(255,255,255,.07); gap: 12px; background: rgba(255,255,255,.015);"
 		>
 			<span style="font-weight: 800; font-size: 15px; letter-spacing: .12em; color: #f4c453;"
 				>{outcome.method}</span
@@ -275,21 +278,21 @@
 
 	<!-- Point breakdown (broadcast mode) -->
 	{#if isBroadcast}
-		<div class="relative border-t" style="padding: 12px 22px; border-color: var(--border-color);">
+		<div class="relative border-t" style="padding: 12px 22px; border-color: rgba(255,255,255,.07);">
 			<div
 				class="grid grid-cols-[1fr_auto_1fr] text-center"
 				style="gap: 16px; font-weight: 600; font-size: 15px; letter-spacing: .06em; color: #5f6d8a;"
 			>
 				<div class="flex justify-center" style="gap: 12px;">
-					<span>{$t('score.pt2.card')} <span style="color: var(--text-primary);">{match.f1_pt2}</span></span>
-					<span>{$t('score.pt3.card')} <span style="color: var(--text-primary);">{match.f1_pt3}</span></span>
-					<span>{$t('score.pt4.card')} <span style="color: var(--text-primary);">{match.f1_pt4}</span></span>
+					<span>{$t('score.pt2.card')} <span style="color: #ffffff;">{match.f1_pt2}</span></span>
+					<span>{$t('score.pt3.card')} <span style="color: #ffffff;">{match.f1_pt3}</span></span>
+					<span>{$t('score.pt4.card')} <span style="color: #ffffff;">{match.f1_pt4}</span></span>
 				</div>
 				<span>{$t('score.points')}</span>
 				<div class="flex justify-center" style="gap: 12px;">
-					<span>{$t('score.pt2.card')} <span style="color: var(--text-primary);">{match.f2_pt2}</span></span>
-					<span>{$t('score.pt3.card')} <span style="color: var(--text-primary);">{match.f2_pt3}</span></span>
-					<span>{$t('score.pt4.card')} <span style="color: var(--text-primary);">{match.f2_pt4}</span></span>
+					<span>{$t('score.pt2.card')} <span style="color: #ffffff;">{match.f2_pt2}</span></span>
+					<span>{$t('score.pt3.card')} <span style="color: #ffffff;">{match.f2_pt3}</span></span>
+					<span>{$t('score.pt4.card')} <span style="color: #ffffff;">{match.f2_pt4}</span></span>
 				</div>
 			</div>
 		</div>

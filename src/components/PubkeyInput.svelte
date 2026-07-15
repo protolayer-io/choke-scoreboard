@@ -150,7 +150,7 @@
 		     and a red Disconnect. -->
 		<div
 			class="flex items-center justify-between gap-3.5"
-			style="padding: 13px 16px 13px 20px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid var(--pill-border);"
+			style="padding: 13px 16px 13px 20px; border-radius: 12px; background: var(--pill-bg); border: 1px solid var(--pill-border);"
 		>
 			<div class="flex min-w-0 items-center" style="gap: 11px;">
 				<span
@@ -166,7 +166,7 @@
 			<button
 				onclick={handleDisconnect}
 				class="flex-none cursor-pointer transition-colors hover:opacity-80"
-				style="padding: 9px 18px; border-radius: 9px; background: rgba(239,68,68,.16); border: 1px solid rgba(239,68,68,.5); font-family: 'Barlow Condensed', system-ui, sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .05em; color: #fca5a5;"
+				style="padding: 9px 18px; border-radius: 9px; background: var(--danger-bg); border: 1px solid var(--danger-border); font-family: 'Barlow Condensed', system-ui, sans-serif; font-weight: 700; font-size: 15px; letter-spacing: .05em; color: var(--danger-text);"
 			>
 				{$t('pubkey.disconnect')}
 			</button>

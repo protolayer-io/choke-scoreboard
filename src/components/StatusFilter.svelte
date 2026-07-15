@@ -14,23 +14,24 @@
 	const CHIP_STYLES = {
 		'in-progress': {
 			labelKey: 'status.live',
-			on: 'background: rgba(22,192,95,.16); border-color: rgba(22,192,95,.55); color: #3ee08a;'
+			on: 'background: var(--chip-live-bg); border-color: var(--chip-live-border); color: var(--chip-live-text);'
 		},
 		waiting: {
 			labelKey: 'status.waiting',
-			on: 'background: rgba(244,180,0,.14); border-color: rgba(244,180,0,.5); color: #f4c453;'
+			on: 'background: var(--chip-wait-bg); border-color: var(--chip-wait-border); color: var(--chip-wait-text);'
 		},
 		finished: {
 			labelKey: 'status.finished',
-			on: 'background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.2); color: #cdd8ef;'
+			on: 'background: var(--chip-done-bg); border-color: var(--chip-done-border); color: var(--chip-done-text);'
 		},
 		canceled: {
 			labelKey: 'status.canceled',
-			on: 'background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.5); color: #fca5a5;'
+			on: 'background: var(--chip-cancel-bg); border-color: var(--chip-cancel-border); color: var(--chip-cancel-text);'
 		}
 	} as const satisfies Record<MatchStatus, { labelKey: MessageKey; on: string }>;
 
-	const CHIP_OFF = 'background: transparent; border-color: rgba(255,255,255,.12); color: #6b7890;';
+	const CHIP_OFF =
+		'background: transparent; border-color: var(--chip-off-border); color: var(--chip-off-text);';
 </script>
 
 <div class="flex flex-wrap items-center" style="gap: 10px;" role="group" aria-label={$t('filter.label')}>

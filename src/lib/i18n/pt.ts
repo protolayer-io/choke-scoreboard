@@ -27,7 +27,7 @@ export const pt = defineCatalog({
 	// ─── Conexão com o organizador ──────────────────────────────────────────
 	'pubkey.placeholder': 'Digite a npub ou chave pública hex do organizador...',
 	'pubkey.load': 'Carregar',
-	'pubkey.debugMode': '🐛 Modo debug',
+	'pubkey.debugMode': 'Modo debug',
 	'pubkey.connected': 'Conectado',
 	'pubkey.disconnect': 'Desconectar',
 	'pubkey.error.invalidNpub': 'Formato de npub inválido',

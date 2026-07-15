@@ -12,6 +12,7 @@
 	} from '$lib/stores.js';
 	import { MATCH_AGE_CHECK_INTERVAL_MS } from '$lib/constants.js';
 	import { t } from '$lib/i18n/index.js';
+	import { base } from '$app/paths';
 	import type { MatchEvent, MatchStatus, ViewMode } from '$lib/types.js';
 
 	let allMatches = $state<Map<string, MatchEvent>>(new Map());
@@ -133,7 +134,19 @@
 		{:else if matches.length === 0 && freshCount > 0}
 			<!-- Filtered-empty state: matches exist but the status filter hides them all -->
 			<div class="flex flex-col items-center justify-center py-16">
-				<span class="text-5xl">🔍</span>
+				<svg
+					width="48"
+					height="48"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="var(--text-secondary)"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					aria-hidden="true"
+				>
+					<circle cx="11" cy="11" r="7" />
+					<path d="m20 20-3.5-3.5" />
+				</svg>
 				<p class="mt-4 text-lg font-medium" style="color: var(--text-secondary);">{$t('home.filterEmptyTitle')}</p>
 				<p class="mt-1 text-sm" style="color: var(--text-secondary);">
 					{$t('home.filterEmptyBody')}
@@ -142,7 +155,13 @@
 		{:else if matches.length === 0}
 			<!-- Empty state -->
 			<div class="flex flex-col items-center justify-center py-16">
-				<span class="text-5xl">🥋</span>
+				<img
+					src="{base}/choke.png"
+					alt=""
+					width="56"
+					height="56"
+					style="width: 56px; height: 56px; border-radius: 14px; object-fit: cover; opacity: .85;"
+				/>
 				<p class="mt-4 text-lg font-medium" style="color: var(--text-secondary);">{$t('home.emptyTitle')}</p>
 				<p class="mt-1 text-sm" style="color: var(--text-secondary);">
 					{$t('home.emptyBody')}
@@ -162,7 +181,13 @@
 	{:else}
 		<!-- Welcome state -->
 		<div class="flex flex-col items-center justify-center py-16 text-center">
-			<span class="text-6xl">🥋</span>
+			<img
+				src="{base}/choke.png"
+				alt=""
+				width="72"
+				height="72"
+				style="width: 72px; height: 72px; border-radius: 18px; object-fit: cover; border: 1px solid var(--pill-border); box-shadow: 0 0 32px rgba(168,85,247,.3);"
+			/>
 			<h2 class="mt-4 text-2xl font-bold" style="color: var(--text-primary);">{$t('home.welcomeTitle')}</h2>
 			<p class="mt-2 max-w-md text-sm" style="color: var(--text-secondary);">
 				{$t('home.welcomeBody')}

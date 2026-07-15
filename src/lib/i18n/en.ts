@@ -33,7 +33,7 @@ export const en = {
 	// ─── Connecting to an organizer ─────────────────────────────────────────
 	'pubkey.placeholder': 'Enter organizer npub or hex pubkey...',
 	'pubkey.load': 'Load',
-	'pubkey.debugMode': '🐛 Debug Mode',
+	'pubkey.debugMode': 'Debug Mode',
 	'pubkey.connected': 'Connected',
 	'pubkey.disconnect': 'Disconnect',
 
