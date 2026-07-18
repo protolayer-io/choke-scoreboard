@@ -20,6 +20,7 @@
 		clearPersistedPubkey
 	} from '$lib/stores.js';
 	import { getDebugMatches } from '$lib/debug-matches.js';
+	import { readSharedPubkey, stripSharedPubkeyFromUrl } from '$lib/share-link.js';
 	import type { MatchEvent } from '$lib/types.js';
 
 	/**
@@ -99,15 +100,37 @@
 		return unsub;
 	});
 
+	/** Load a key and mirror it into the input, npub-encoded when possible. */
+	function loadPubkey(hex: string): void {
+		try {
+			inputValue = encodePubkey(hex);
+		} catch {
+			inputValue = hex;
+		}
+		connectToPubkey(hex);
+	}
+
 	onMount(() => {
+		// A shared link (…/?npub=…) wins over whatever was last loaded on this
+		// device: the person following it means to watch that organizer right now.
+		// Once loaded the key is persisted, so we strip it from the address bar —
+		// a later refresh restores it from storage, not from a stale URL.
+		const shared = readSharedPubkey(window.location.search);
+		if (shared) {
+			try {
+				loadPubkey(decodePubkey(shared));
+				stripSharedPubkeyFromUrl();
+				return;
+			} catch {
+				// A malformed link shouldn't strand the viewer: drop it and fall back
+				// to any key they already had.
+				stripSharedPubkeyFromUrl();
+			}
+		}
+
 		const saved = loadPersistedPubkey();
 		if (saved && saved.length > 0) {
-			try {
-				inputValue = encodePubkey(saved);
-			} catch {
-				inputValue = saved;
-			}
-			connectToPubkey(saved);
+			loadPubkey(saved);
 		}
 	});
 </script>
