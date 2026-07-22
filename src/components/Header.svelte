@@ -35,13 +35,20 @@
 >
 	<div class="mx-auto flex max-w-6xl items-center justify-between">
 		<a href="{base}/" class="flex items-center no-underline" style="gap: 14px;">
-			<img
-				src="{base}/choke.png"
-				alt=""
-				width="46"
-				height="46"
-				style="width: 46px; height: 46px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 0 22px rgba(168,85,247,.35);"
-			/>
+			<!-- The chip is not decoration: the mark is red and black on
+			     transparency, and the black half would vanish into the header. -->
+			<span
+				class="flex shrink-0 items-center justify-center"
+				style="width: 46px; height: 46px; border-radius: 12px; background: var(--logo-bg); border: 1px solid var(--logo-border); box-shadow: 0 2px 10px rgba(0,0,0,.28);"
+			>
+				<img
+					src="{base}/choke-logo.png"
+					alt=""
+					width="34"
+					height="34"
+					style="width: 34px; height: 34px; object-fit: contain;"
+				/>
+			</span>
 			<span
 				style="font-family: 'Barlow Condensed', system-ui, sans-serif; font-weight: 800; font-size: 27px; line-height: 1; letter-spacing: .02em; color: var(--text-primary);"
 			>
