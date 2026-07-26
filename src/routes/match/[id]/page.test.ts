@@ -134,10 +134,15 @@ describe('the board under each theme', () => {
 		// 86px. Only the second one needs the surface to push back, and that is
 		// the difference tint() exists for.
 		const html = render({ status: 'finished', winner: 'f1', method: 'submission' });
+		expect(html()).toContain(rgb('#2563eb'));
 
 		theme.set('light');
 		flushSync();
 
-		expect(html()).toContain('color-mix(in srgb, rgb(37, 99, 235) 72%, black)');
+		// The AMOUNT is deliberately not pinned. How far a color has to be taken
+		// down to be readable is tint()'s business and is measured there against
+		// real contrast; asserting a percentage here would freeze today's recipe
+		// and call a future improvement a regression.
+		expect(html()).toMatch(/color-mix\(in srgb, rgb\(37, 99, 235\) \d+%, black\)/);
 	});
 });
