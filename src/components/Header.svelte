@@ -1,26 +1,16 @@
 <script lang="ts">
 	import { theme } from '$lib/stores.js';
+	import { toggleTheme } from '$lib/theme.js';
 	import { t } from '$lib/i18n/index.js';
 	import { base } from '$app/paths';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import FullscreenToggle from './FullscreenToggle.svelte';
 
-	function toggleTheme(): void {
-		theme.update((t) => {
-			const next = t === 'dark' ? 'light' : 'dark';
-			document.documentElement.classList.toggle('light', next === 'light');
-			return next;
-		});
-	}
-
-	let currentTheme = $state<'dark' | 'light'>('dark');
-
-	$effect(() => {
-		const unsub = theme.subscribe((t) => {
-			currentTheme = t;
-		});
-		return unsub;
-	});
+	// `$theme` and not a hand-rolled subscription into $state. The old version
+	// started at 'dark' and caught up in an $effect, which is AFTER the first
+	// render — so a saved light theme drew the moon for one frame and then
+	// swapped it for the sun. The auto-subscription has the value at setup.
+	let currentTheme = $derived($theme);
 
 	// The wordmark is two-tone (design 2A): the first word bright, the rest
 	// muted. The brand is never translated, but it still comes through the
@@ -65,7 +55,7 @@
 			<FullscreenToggle />
 
 			<button
-				onclick={toggleTheme}
+				onclick={() => toggleTheme()}
 				class="flex items-center justify-center transition-colors hover:opacity-80"
 				style="width: 40px; height: 40px; border-radius: 10px; background: var(--pill-bg); border: 1px solid var(--pill-border); color: var(--icon-muted);"
 				aria-label={$t('header.toggleTheme')}
