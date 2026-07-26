@@ -76,9 +76,28 @@ Countdown timer display.
 |------|------|---------|-------------|
 | `match` | `MatchEvent` | — | Match data for timer calculation |
 | `large` | `boolean` | `false` | Large text mode for detail view |
+| `class` | `string` | `''` | Typography override; when set, the caller owns font family and size |
+| `tone` | `'muted' \| 'bright'` | `'muted'` | Base color when the timer is neither in warning nor expired |
 
 **Behavior:**
 - `waiting` → Shows total duration (e.g., "5:00")
 - `in-progress` → Counts down every 1 second
 - `finished`/`canceled` → Shows "--:--"
 - Last 30 seconds → Gold color + pulse animation
+- Paused (`paused_at` set while `in-progress`) → Frozen at the time the referee stopped it
+
+**The tick must land ON the second boundary — not merely once per second.**
+
+The displayed value is a function of `Math.floor(Date.now() / 1000)` (see
+[match-lifecycle.md](./match-lifecycle.md)), so it changes on the epoch-second boundary and nowhere
+else. A tick that lands mid-second leaves the *previous* second on the wall for the rest of this one,
+and the board reads behind the referee's app.
+
+`setInterval(fn, 1000)` cannot hold that invariant: it fires a second after it was armed, and here
+that moment is the arrival of a relay event — so the phase comes from network jitter, is re-rolled by
+every score update, and drifts later under the browser's clamp. `src/lib/tick.ts` schedules each tick
+from the current clock instead, aimed just past the coming boundary. **Replacing it with an interval
+would look like a simplification and would silently restore a delay of up to a second.**
+
+The ticker stops itself once the clock reaches 0:00, because a match stays `in-progress` until the
+referee names the outcome.
