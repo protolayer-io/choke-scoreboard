@@ -88,9 +88,15 @@ export function persistTheme(next: Theme, storage?: Storage | null): void {
 	}
 }
 
-/** Paint the choice onto the page. */
+/**
+ * Paint the choice onto the page.
+ *
+ * The comparison is against the theme, not against THEME_CLASS: those two are
+ * the same string today by coincidence, and renaming the class — the one thing
+ * `app.css` would survive fine — would otherwise stop this from ever applying it.
+ */
 export function applyTheme(next: Theme, root?: HTMLElement | null): void {
-	activeRoot(root)?.classList.toggle(THEME_CLASS, next === THEME_CLASS);
+	activeRoot(root)?.classList.toggle(THEME_CLASS, next === 'light');
 }
 
 /**
