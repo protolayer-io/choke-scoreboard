@@ -1,6 +1,20 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.protolayer.choke",
+      "sha256_cert_fingerprints": [
+        "4F:AE:F7:09:81:CC:99:22:DA:57:DA:32:70:B5:C0:21:98:3F:B5:EB:C3:34:22:DB:89:F9:85:37:27:02:B3:DC"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "io.protolayer.choke.debug",
