@@ -45,15 +45,15 @@ Main match display card with fighter scores.
 - Status badge
 - Countdown timer
 - Winner indication (pulsing score, bouncing trophy)
+- Point breakdown in broadcast mode
+- Clickable → navigates to match detail
+- Green glow border for live matches
+- Dimmed appearance for canceled matches
 
 Like the broadcast board it links to, the card is drawn twice and takes its colors from
 `getCardPalette($theme)` — see [the broadcast board](#broadcast-board). It used to be navy under
 *both* themes, on the argument that a scoreboard is dark; design 3A retired that argument, and a dark
 card on a light list was the last thing in the app that ignored the theme.
-- Point breakdown in broadcast mode
-- Clickable → navigates to match detail
-- Green glow border for live matches
-- Dimmed appearance for canceled matches
 
 ## StatusBadge (`src/components/StatusBadge.svelte`)
 

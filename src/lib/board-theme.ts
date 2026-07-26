@@ -14,7 +14,7 @@
  * read as text. That is arithmetic, and it belongs somewhere it can be tested.
  */
 
-import { alpha, darken } from './colors.js';
+import { BLACK, alpha, contrastRatio, darken, mixOver, parseRgb } from './colors.js';
 import type { MatchStatus } from './types.js';
 
 export type BoardTheme = 'dark' | 'light';
@@ -39,9 +39,11 @@ export interface WashSpec {
 	end: string;
 }
 
-/** Anything that knows how far to darken a fighter's color. See `tint()`. */
-interface Tintable {
+/** What `tint()` needs to know about the surface it is making a color legible on. */
+export interface Tintable {
 	tintAmount: number;
+	surface: string;
+	wash: WashSpec;
 }
 
 /** The ADV and PEN chips: a tinted box with a label and a count. */
@@ -331,14 +333,17 @@ const CARD_LIGHT: CardPalette = {
 	border: 'rgba(13,21,38,.1)',
 	shadow: '0 10px 28px rgba(13,21,38,.1)',
 	ink: '#0d1526',
-	// The loser's name has to read as sunk WITHOUT becoming unreadable: it is
-	// still one of the two names on the card. This lands near 3.5:1 on white,
-	// which is about where #66738f sits against the navy card.
-	dimName: '#7c879c',
-	dimScore: '#b6bdcc',
-	muted: '#68758f',
+	// The loser has to read as sunk WITHOUT becoming unreadable: the name is
+	// still one of the two on the card, and the score is still the score. On navy
+	// "sunk" means darker and the surface does the work; on paper it means
+	// lighter, and white gives nothing back — so both of these are pulled down
+	// until they clear their WCAG floor (name 4.4:1, score 3.1:1) with the
+	// hierarchy ink → dimName → dimScore intact.
+	dimName: '#6b7690',
+	dimScore: '#8a94ab',
+	muted: '#5b6780',
 	clock: '#5b6780',
-	vs: '#8a94ab',
+	vs: '#6b7690',
 	wash: { strength: 0.14, mid: 0.02, fade: '60%', end: '82%' },
 	advantage: { bg: 'rgba(202,138,4,.12)', border: 'rgba(202,138,4,.42)', text: '#854d0e' },
 	penalty: { bg: 'rgba(220,38,38,.1)', border: 'rgba(220,38,38,.42)', text: '#991b1b' },
@@ -424,7 +429,50 @@ export function halfWash(wash: WashSpec, color: string, angle: number): string {
 	return `linear-gradient(${angle}deg, ${alpha(color, wash.strength)}, ${alpha(color, wash.mid)} ${wash.fade}, transparent ${wash.end})`;
 }
 
-/** A fighter's color, made safe to read as text on this surface. */
+/**
+ * Large text — the winning score is 52px, the winner's name 86px — so 3:1 is
+ * the floor WCAG puts under it.
+ */
+const READABLE_CONTRAST = 3;
+
+/** One whole percent, which is the resolution `darken()` emits anyway. */
+const TINT_STEP = 0.01;
+
+/**
+ * How far to darken this color before it can be read on this surface.
+ *
+ * Starts at the design's own amount and only ever goes further, so a color the
+ * mock already handles is rendered exactly as drawn.
+ *
+ * Falls back to the design's amount for a color it cannot measure. That is the
+ * honest answer rather than a safe-looking one: guessing dark for an unmeasurable
+ * color would turn a fighter's red into near-black on the strength of nothing.
+ */
+function readableTintAmount(palette: Tintable, color: string): number {
+	const foreground = parseRgb(color);
+	const surface = parseRgb(palette.surface);
+	if (!foreground || !surface) return palette.tintAmount;
+
+	// Not the surface — the surface with this fighter's own wash over it. The
+	// background under a winner's score is pulled toward the very color being
+	// read, which is the case a measurement against plain white would miss.
+	const background = mixOver(foreground, surface, palette.wash.strength);
+
+	for (let amount = palette.tintAmount; amount < 1; amount += TINT_STEP) {
+		if (contrastRatio(mixOver(BLACK, foreground, amount), background) >= READABLE_CONTRAST) {
+			return amount;
+		}
+	}
+	return 1;
+}
+
+/**
+ * A fighter's color, made safe to read as text on this surface.
+ *
+ * A fixed mix is not a contrast guarantee: the organizer picks the color, and
+ * plenty of legitimate ones — a yellow belt, a white team — still fail at the
+ * design's 28% black. So the amount is measured rather than assumed.
+ */
 export function tint(palette: Tintable, color: string): string {
-	return palette.tintAmount === 0 ? color : darken(color, palette.tintAmount);
+	return palette.tintAmount === 0 ? color : darken(color, readableTintAmount(palette, color));
 }

@@ -6,8 +6,10 @@ import {
 	glow,
 	halfWash,
 	tint,
-	type BoardStatus
+	type BoardStatus,
+	type Tintable
 } from './board-theme.js';
+import { BLACK, contrastRatio, mixOver, parseRgb } from './colors.js';
 
 /**
  * The broadcast board is the only screen in this app that is *watched* rather
@@ -21,6 +23,9 @@ import {
  */
 
 const ALL_STATUSES: BoardStatus[] = ['waiting', 'in-progress', 'finished', 'canceled', 'paused'];
+
+/** Shared by both suites: the one value neither light surface may ever use. */
+const isWhite = (color: string) => ['#fff', '#ffffff', 'white'].includes(color.toLowerCase());
 
 describe('getBoardPalette', () => {
 	it('paints the light board on the 3A surface, in 3A ink', () => {
@@ -62,7 +67,6 @@ describe('getBoardPalette', () => {
 		// `finished` is the trap: on 1A the FINAL pill is white, and a draw has no
 		// winner color to borrow, so the light board must carry its own ink.
 		const light = getBoardPalette('light');
-		const isWhite = (color: string) => ['#fff', '#ffffff', 'white'].includes(color.toLowerCase());
 
 		for (const status of ALL_STATUSES) {
 			expect(isWhite(light.status[status].color), status).toBe(false);
@@ -94,7 +98,6 @@ describe('getCardPalette', () => {
 		// The card used to be navy under BOTH themes, so its ink was a literal
 		// white on purpose. Missing one of these leaves text invisible on paper.
 		const light = getCardPalette('light');
-		const isWhite = (color: string) => ['#fff', '#ffffff', 'white'].includes(color.toLowerCase());
 
 		for (const role of ['ink', 'dimName', 'dimScore', 'muted', 'clock', 'vs'] as const) {
 			expect(isWhite(light[role]), role).toBe(false);
@@ -115,27 +118,83 @@ describe('getCardPalette', () => {
 		}
 	});
 
-	it('darkens a fighter’s color for the light card, as the board does', () => {
-		// A winning score is printed in the fighter's own color, at 52px.
-		expect(tint(getCardPalette('light'), '#ffd451')).toBe('color-mix(in srgb, #ffd451 72%, black)');
-		expect(tint(getCardPalette('dark'), '#ffd451')).toBe('#ffd451');
+	it('keeps every de-emphasised role readable on white', () => {
+		// White gives nothing back. `muted` and `vs` are normal-size text (4.5:1);
+		// `dimScore` is the losing score at 52px, so it answers to 3:1.
+		const light = getCardPalette('light');
+		const white = parseRgb(light.surface)!;
+		const ratio = (hex: string) => contrastRatio(parseRgb(hex)!, white);
+
+		expect(ratio(light.muted)).toBeGreaterThanOrEqual(4.5);
+		expect(ratio(light.clock)).toBeGreaterThanOrEqual(4.5);
+		expect(ratio(light.vs)).toBeGreaterThanOrEqual(4.5);
+		expect(ratio(light.dimName)).toBeGreaterThanOrEqual(3);
+		expect(ratio(light.dimScore)).toBeGreaterThanOrEqual(3);
 	});
 });
 
+/**
+ * What the browser will actually paint for a tinted color, on the background it
+ * will actually sit on: the surface with that fighter's own wash over it.
+ */
+function paintedContrast(
+	palette: Tintable,
+	color: string
+): number {
+	const mix = /color-mix\(in srgb, (.+) (\d+)%, black\)/.exec(tint(palette, color));
+	const source = parseRgb(mix ? mix[1] : color)!;
+	const painted = mixOver(BLACK, source, mix ? 1 - Number(mix[2]) / 100 : 0);
+	return contrastRatio(painted, mixOver(source, parseRgb(palette.surface)!, palette.wash.strength));
+}
+
 describe('tint', () => {
-	it('darkens a fighter color before the light board reads it as text', () => {
+	/**
+	 * The colors an organizer actually reaches for. Every one of these is a legal
+	 * belt or team color, and every one of them fails the design's flat 28% black
+	 * on white — which is exactly why the amount is measured instead of assumed.
+	 */
+	const BRIGHT = ['#ffd451', '#ffff00', '#ffffff', '#13c88a', '#ff9f33', '#2563eb'];
+
+	it('darkens a bright fighter color until it can actually be read', () => {
 		// Arrange
-		const palette = getBoardPalette('light');
+		const palette = getCardPalette('light');
 
-		// Act
-		const result = tint(palette, '#ffd451');
-
-		// Assert — the 3A darken(): 72% of the color
-		expect(result).toBe('color-mix(in srgb, #ffd451 72%, black)');
+		// Assert — 3:1 is WCAG's floor for text this large, and a flat 28% left
+		// #ffd451 at about 2.7:1 and #ffffff at about 2.0:1.
+		for (const color of BRIGHT) {
+			expect(paintedContrast(palette, color), color).toBeGreaterThanOrEqual(3);
+		}
 	});
 
-	it('leaves a fighter color alone on the dark board', () => {
+	it('holds the light board to the same floor', () => {
+		const palette = getBoardPalette('light');
+
+		for (const color of BRIGHT) {
+			expect(paintedContrast(palette, color), color).toBeGreaterThanOrEqual(3);
+		}
+	});
+
+	it('never darkens less than the design asked for', () => {
+		// The measurement only ever adds to 3A's darken(). A color the mock
+		// already handles has to come out looking exactly as it was drawn.
+		const painted = tint(getBoardPalette('light'), '#2563eb');
+		const percent = Number(/(\d+)%/.exec(painted)![1]);
+
+		expect(percent).toBeLessThanOrEqual(72);
+	});
+
+	it('falls back to the design amount for a color it cannot measure', () => {
+		// `sanitizeColor` lets through named and oklch colors, which this cannot
+		// resolve to channels. Guessing dark would turn a red belt near-black on
+		// the strength of nothing.
+		expect(tint(getBoardPalette('light'), 'rebeccapurple')).toBe(
+			'color-mix(in srgb, rebeccapurple 72%, black)'
+		);
+	});
+
+	it('leaves a fighter color alone on either dark surface', () => {
 		expect(tint(getBoardPalette('dark'), '#ffd451')).toBe('#ffd451');
+		expect(tint(getCardPalette('dark'), '#ffd451')).toBe('#ffd451');
 	});
 });
 

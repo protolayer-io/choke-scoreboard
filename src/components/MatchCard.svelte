@@ -250,12 +250,19 @@
 			class="relative flex items-center justify-center"
 			style="margin-top: 8px; padding: 11px 22px; border-top: 1px solid {card.liveBar.border}; gap: 9px; background: {card.liveBar.bg};"
 		>
+			<!-- The strip has to agree with the pill above it. A paused match is
+			     still `in-progress`, so this used to blink "IN PROGRESS" while the
+			     pill three inches up read PAUSED: one card, two readings, and the
+			     blinking one is the one that catches the eye across a room.
+			     The label stays `status.inProgress` rather than the pill's
+			     `status.live` — the strip is a caption for the card, not a second
+			     copy of the badge. -->
 			<span
-				class="animate-liveblink rounded-full"
+				class="rounded-full {isPaused ? '' : 'animate-liveblink'}"
 				style="width: 7px; height: 7px; background: {card.liveBar.dot};"
 			></span>
 			<span style="font-weight: 700; font-size: 14px; letter-spacing: .14em; color: {card.liveBar.text};"
-				>{$t('status.inProgress')}</span
+				>{$t(isPaused ? STATUS_LABELS.paused : 'status.inProgress')}</span
 			>
 		</div>
 	{/if}

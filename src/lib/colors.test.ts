@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { alpha, darken, sanitizeColor } from './colors.js';
+import {
+	alpha,
+	contrastRatio,
+	darken,
+	mixOver,
+	parseRgb,
+	sanitizeColor,
+	type Rgb
+} from './colors.js';
 
 /**
  * Fighter colors are chosen by an organizer, not by a designer. They arrive as
@@ -40,6 +48,62 @@ describe('darken', () => {
 describe('alpha', () => {
 	it('turns an opacity into a color-mix against transparency', () => {
 		expect(alpha('#13c88a', 0.6)).toBe('color-mix(in srgb, #13c88a 60%, transparent)');
+	});
+});
+
+describe('parseRgb', () => {
+	it('reads both hex lengths, with or without alpha', () => {
+		expect(parseRgb('#13c88a')).toEqual([19, 200, 138]);
+		expect(parseRgb('#1c8')).toEqual([17, 204, 136]);
+		expect(parseRgb('#13c88aff')).toEqual([19, 200, 138]);
+		expect(parseRgb('#1c8f')).toEqual([17, 204, 136]);
+	});
+
+	it('reads rgb() in both the legacy and the modern syntax', () => {
+		expect(parseRgb('rgb(19, 200, 138)')).toEqual([19, 200, 138]);
+		expect(parseRgb('rgb(19 200 138 / 0.5)')).toEqual([19, 200, 138]);
+		expect(parseRgb('rgba(19,200,138,0.5)')).toEqual([19, 200, 138]);
+	});
+
+	it('says null to a color it cannot resolve without a browser', () => {
+		// The point is not that these are invalid — `sanitizeColor` lets them
+		// through on purpose, and the browser renders them. It is that guessing
+		// their channels is worse than admitting we do not know them.
+		expect(parseRgb('rebeccapurple')).toBeNull();
+		expect(parseRgb('oklch(0.7 0.2 30)')).toBeNull();
+		expect(parseRgb('#12345')).toBeNull();
+		expect(parseRgb('rgb(19, 200)')).toBeNull();
+	});
+});
+
+describe('contrastRatio', () => {
+	it('puts black on white at 21:1 and a color against itself at 1:1', () => {
+		expect(contrastRatio([0, 0, 0], [255, 255, 255])).toBeCloseTo(21, 5);
+		expect(contrastRatio([19, 200, 138], [19, 200, 138])).toBeCloseTo(1, 5);
+	});
+
+	it('does not care which color is given first', () => {
+		const a: Rgb = [19, 200, 138];
+		const b: Rgb = [13, 21, 38];
+		expect(contrastRatio(a, b)).toBeCloseTo(contrastRatio(b, a), 10);
+	});
+
+	it('agrees with the published ratio for a known pair', () => {
+		// #767676 on white is the canonical 4.5:1 boundary case.
+		expect(contrastRatio([118, 118, 118], [255, 255, 255])).toBeCloseTo(4.54, 1);
+	});
+});
+
+describe('mixOver', () => {
+	it('matches what color-mix paints, at both ends and in between', () => {
+		expect(mixOver([0, 0, 0], [200, 100, 50], 0)).toEqual([200, 100, 50]);
+		expect(mixOver([0, 0, 0], [200, 100, 50], 1)).toEqual([0, 0, 0]);
+		expect(mixOver([0, 0, 0], [200, 100, 50], 0.5)).toEqual([100, 50, 25]);
+	});
+
+	it('clamps an out-of-range amount', () => {
+		expect(mixOver([0, 0, 0], [200, 100, 50], 2)).toEqual([0, 0, 0]);
+		expect(mixOver([0, 0, 0], [200, 100, 50], -1)).toEqual([200, 100, 50]);
 	});
 });
 
