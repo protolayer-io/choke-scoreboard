@@ -265,3 +265,54 @@ describe('the countdown on screen', () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 });
+
+/**
+ * The one contract this component has with a component it never imports.
+ *
+ * The broadcast board has two themes (designs 1A and 3A) and this clock is on
+ * both of them — but it is also on the match list, which has neither. So the
+ * board hands it colors through custom properties, and the clock never learns
+ * which board it is standing on.
+ *
+ * Every failure here is SILENT, and none of it is visible from the board's side:
+ * writing `#ffffff` back into `bright` reads as removing an indirection, keeps
+ * everything above green, and leaves a white clock on a white card — a match
+ * with no time on it, on a wall, in front of a room.
+ */
+describe('the color the clock prints in', () => {
+	/** The inline style the component actually rendered. */
+	function styleOf(): string {
+		return target.firstElementChild?.getAttribute('style') ?? '';
+	}
+
+	it('takes `bright` from the board behind it, not from white', () => {
+		// Arrange / Act
+		component = mount(Timer, { target, props: { match: match(), tone: 'bright' } });
+		flushSync();
+
+		// Assert — the fallback is what keeps every other caller white
+		expect(styleOf()).toContain('var(--board-ink, #ffffff)');
+	});
+
+	it('stays on the app’s muted text color when no tone is asked for', () => {
+		// Arrange / Act
+		component = mount(Timer, { target, props: { match: match() } });
+		flushSync();
+
+		// Assert
+		expect(styleOf()).toContain('var(--text-secondary)');
+	});
+
+	it('reaches for the board’s gold in the closing seconds, not a literal', () => {
+		// Arrange — 20 seconds left, which is inside the warning window
+		component = mount(Timer, {
+			target,
+			props: { match: match({ start_at: STARTED_AT_S - 280 }), tone: 'bright' }
+		});
+		flushSync();
+
+		// Assert — the board overrides --color-gold, because the shipped gold is
+		// unreadable on the light theme's white card
+		expect(styleOf()).toContain('var(--color-gold');
+	});
+});
