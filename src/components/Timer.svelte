@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { MatchEvent } from '$lib/types.js';
 	import { formatTime, getRemainingSeconds, isMatchPaused, isTimerWarning } from '$lib/scoring.js';
+	import { startSecondAlignedTicker } from '$lib/tick.js';
 
 	interface Props {
 		match: MatchEvent;
@@ -56,8 +57,11 @@
 
 		if (match.status !== 'in-progress' || isMatchPaused(match)) return;
 
-		const interval = setInterval(updateTimer, 1000);
-		return () => clearInterval(interval);
+		// On the second, not a second from now. This effect re-runs whenever a relay
+		// event lands, so an interval armed here would take its phase from network
+		// jitter and hold each second on the wall past the moment it changed — the
+		// board reading behind the referee's phone all match. See lib/tick.ts.
+		return startSecondAlignedTicker(updateTimer);
 	});
 </script>
 
