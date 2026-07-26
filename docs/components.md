@@ -50,6 +50,11 @@ Main match display card with fighter scores.
 - Green glow border for live matches
 - Dimmed appearance for canceled matches
 
+Like the broadcast board it links to, the card is drawn twice and takes its colors from
+`getCardPalette($theme)` — see [the broadcast board](#broadcast-board). It used to be navy under
+*both* themes, on the argument that a scoreboard is dark; design 3A retired that argument, and a dark
+card on a light list was the last thing in the app that ignored the theme.
+
 ## StatusBadge (`src/components/StatusBadge.svelte`)
 
 Visual indicator for match status.
@@ -127,7 +132,8 @@ composed at render time, so the module exposes the recipes as well:
 | Export | What it answers |
 |--------|-----------------|
 | `getBoardPalette(theme)` | Every flat color: surface, ink, chips, card, banner, per-status |
-| `halfWash(palette, color, angle)` | The diagonal wash behind one half — lighter and longer on white |
+| `getCardPalette(theme)` | The same, for the match card on the list (design 2A and its light twin) |
+| `halfWash(wash, color, angle)` | The diagonal wash behind one half — lighter and longer on white. Takes the spec, not the palette, because both surfaces wash the same way at different strengths |
 | `glow(spec, color)` | Edge bar, name chip, score, winner name, live dot; `'none'` where light drops it |
 | `tint(palette, color)` | A fighter's color made safe to read **as text**. Identity on dark; darkened on light, where a yellow belt on white is invisible |
 

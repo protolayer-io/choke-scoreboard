@@ -58,3 +58,81 @@ export function alpha(color: string, amount: number): string {
 export function darken(color: string, amount: number): string {
 	return `color-mix(in srgb, ${color} ${100 - toPercent(amount)}%, black)`;
 }
+
+/** sRGB channels, 0–255. */
+export type Rgb = [number, number, number];
+
+export const BLACK: Rgb = [0, 0, 0];
+
+/**
+ * The channels of a color, or null when this notation cannot be measured here.
+ *
+ * Deliberately narrow. `sanitizeColor` accepts anything CSS plausibly accepts —
+ * named colors, `oklch()`, `color()` — because the browser is what renders it,
+ * and it knows them all. Measuring is a different job: resolving `rebeccapurple`
+ * or an oklch triple to sRGB by hand is a color-management library, and a wrong
+ * answer is worse than no answer here, because callers act on it. So this reads
+ * the two notations an organizer's app actually sends, and says null to the rest.
+ */
+export function parseRgb(color: string): Rgb | null {
+	const value = color.trim().toLowerCase();
+
+	const hex = /^#([0-9a-f]{3,8})$/.exec(value);
+	if (hex) {
+		const digits = hex[1];
+		// #rgb and #rgba: each digit is a doubled channel. #rrggbb and #rrggbbaa:
+		// pairs. Any other length is not a color. Alpha is ignored either way —
+		// these colors are painted opaque.
+		if (digits.length === 3 || digits.length === 4) {
+			return [0, 1, 2].map((i) => parseInt(digits[i] + digits[i], 16)) as Rgb;
+		}
+		if (digits.length === 6 || digits.length === 8) {
+			return [0, 2, 4].map((i) => parseInt(digits.slice(i, i + 2), 16)) as Rgb;
+		}
+		return null;
+	}
+
+	const functional = /^rgba?\(([^)]*)\)$/.exec(value);
+	if (functional) {
+		const parts = functional[1]
+			.split(/[\s,/]+/)
+			.filter(Boolean)
+			.slice(0, 3);
+		if (parts.length < 3) return null;
+
+		const channels = parts.map((part) =>
+			part.endsWith('%') ? (parseFloat(part) * 255) / 100 : parseFloat(part)
+		);
+		if (channels.some((channel) => !Number.isFinite(channel))) return null;
+
+		return channels.map((channel) => Math.min(Math.max(channel, 0), 255)) as Rgb;
+	}
+
+	return null;
+}
+
+/** WCAG relative luminance. */
+export function relativeLuminance([r, g, b]: Rgb): number {
+	const [rl, gl, bl] = [r, g, b].map((channel) => {
+		const srgb = Math.min(Math.max(channel, 0), 255) / 255;
+		return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+	});
+	return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
+}
+
+/** WCAG contrast between two colors: 1 when identical, 21 for black on white. */
+export function contrastRatio(a: Rgb, b: Rgb): number {
+	const [la, lb] = [relativeLuminance(a), relativeLuminance(b)];
+	const [lighter, darker] = la >= lb ? [la, lb] : [lb, la];
+	return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
+ * `top` laid over `bottom` at `amount` opacity — the same arithmetic
+ * `color-mix(in srgb, …)` does, so a measurement here predicts what the browser
+ * will actually paint.
+ */
+export function mixOver(top: Rgb, bottom: Rgb, amount: number): Rgb {
+	const ratio = Math.min(Math.max(amount, 0), 1);
+	return [0, 1, 2].map((i) => bottom[i] + (top[i] - bottom[i]) * ratio) as Rgb;
+}
