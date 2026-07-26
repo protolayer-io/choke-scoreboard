@@ -99,6 +99,32 @@ describe('readStoredTheme', () => {
 	it('answers null instead of throwing when storage is blocked', () => {
 		expect(readStoredTheme(hostileStorage())).toBeNull();
 	});
+
+	it('survives an origin where even reaching for localStorage throws', () => {
+		// Arrange — an opaque origin: a sandboxed iframe, a `data:` URL. The
+		// global is not absent there, it is a getter that raises SecurityError,
+		// so `typeof localStorage` is enough to blow up. Verified in Chromium.
+		const real = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+		Object.defineProperty(globalThis, 'localStorage', {
+			configurable: true,
+			get() {
+				throw new DOMException('Storage is disabled inside data: URLs.', 'SecurityError');
+			}
+		});
+
+		try {
+			// Act / Assert — no argument, so it has to reach for the global itself.
+			// Uncaught, this would surface during the root layout's setup and take
+			// the whole app down to a blank page.
+			expect(() => readStoredTheme()).not.toThrow();
+			expect(readStoredTheme()).toBeNull();
+			expect(() => persistTheme('light')).not.toThrow();
+			expect(() => initTheme(undefined, root)).not.toThrow();
+		} finally {
+			if (real) Object.defineProperty(globalThis, 'localStorage', real);
+			else Reflect.deleteProperty(globalThis, 'localStorage');
+		}
+	});
 });
 
 describe('persistTheme', () => {
@@ -202,6 +228,14 @@ describe('the shell that paints before the bundle boots', () => {
 
 	it('applies the same class this module applies', () => {
 		expect(shell).toContain(`'${THEME_CLASS}'`);
+	});
+
+	it('encodes the same default this module does', () => {
+		// The shell adds the class only for a saved `light`, which is the right
+		// script exactly as long as the default is dark. Flip DEFAULT_THEME and
+		// a first visit would boot dark-from-shell and light-from-store — the
+		// mismatch this whole file exists to prevent.
+		expect(DEFAULT_THEME).toBe('dark');
 	});
 
 	it('cannot throw the page away when storage is blocked', () => {

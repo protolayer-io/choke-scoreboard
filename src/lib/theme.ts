@@ -37,10 +37,25 @@ function isTheme(value: unknown): value is Theme {
 	return value === 'dark' || value === 'light';
 }
 
-/** The storage to act on: the caller's under test, the browser's in the app. */
+/**
+ * The storage to act on: the caller's under test, the browser's in the app.
+ *
+ * Reaching for the global is itself inside a try, and that is not defensive
+ * clutter: on an opaque origin — a sandboxed iframe, a `data:` URL — the
+ * `localStorage` getter THROWS rather than being absent, so even `typeof
+ * localStorage` raises. Uncaught, that comes out of initTheme() during the root
+ * layout's setup and takes the whole app down to a blank page, on a board whose
+ * only sin was being embedded. Verified in Chromium.
+ */
 function activeStorage(storage?: Storage | null): Storage | null {
 	if (storage) return storage;
-	return typeof localStorage === 'undefined' ? null : localStorage;
+
+	try {
+		return typeof localStorage === 'undefined' ? null : localStorage;
+	} catch (err) {
+		console.warn('This document is not allowed to use localStorage:', err);
+		return null;
+	}
 }
 
 /** The element to mark: the caller's under test, <html> in the app. */

@@ -6,14 +6,11 @@
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import FullscreenToggle from './FullscreenToggle.svelte';
 
-	let currentTheme = $state<'dark' | 'light'>('dark');
-
-	$effect(() => {
-		const unsub = theme.subscribe((t) => {
-			currentTheme = t;
-		});
-		return unsub;
-	});
+	// `$theme` and not a hand-rolled subscription into $state. The old version
+	// started at 'dark' and caught up in an $effect, which is AFTER the first
+	// render — so a saved light theme drew the moon for one frame and then
+	// swapped it for the sun. The auto-subscription has the value at setup.
+	let currentTheme = $derived($theme);
 
 	// The wordmark is two-tone (design 2A): the first word bright, the rest
 	// muted. The brand is never translated, but it still comes through the
