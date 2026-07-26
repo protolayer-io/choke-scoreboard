@@ -1,0 +1,26 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.protolayer.choke",
+      "sha256_cert_fingerprints": [
+        "4F:AE:F7:09:81:CC:99:22:DA:57:DA:32:70:B5:C0:21:98:3F:B5:EB:C3:34:22:DB:89:F9:85:37:27:02:B3:DC"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.protolayer.choke.debug",
+      "sha256_cert_fingerprints": [
+        "47:04:F7:F1:98:37:82:18:D7:2D:13:4E:1F:C1:55:75:CF:6F:9A:F4:80:DF:F0:F6:A9:6F:A9:EB:34:1F:DD:5A"
+      ]
+    }
+  }
+]
