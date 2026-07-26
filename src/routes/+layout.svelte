@@ -4,7 +4,7 @@
 	import Header from '../components/Header.svelte';
 	import { initLocale, locale, t } from '$lib/i18n/index.js';
 	import { watchFullscreen } from '$lib/fullscreen.js';
-	import { initTheme } from '$lib/theme.js';
+	import { initTheme, watchTheme } from '$lib/theme.js';
 
 	let { children } = $props();
 
@@ -22,6 +22,11 @@
 	// so the toggle's label stays right when the user leaves fullscreen with Esc
 	// or F11 — and survives navigating from the list into a match and back.
 	$effect(() => watchFullscreen());
+
+	// Follow the theme when it is chosen in another tab. The operator's setup is
+	// two of them — the board on the projector, the list on the laptop they are
+	// touching — and only the tab that was clicked repaints itself.
+	$effect(() => watchTheme());
 
 	// Adopt the reader's language: what they chose last time, or what their
 	// browser asks for. The store starts in English because this code also runs

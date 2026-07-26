@@ -128,6 +128,45 @@ export function initTheme(storage?: Storage | null, root?: HTMLElement | null): 
 	return next;
 }
 
+/** The window to listen on: the caller's under test, the browser's in the app. */
+function activeWindow(target?: Window | null): Window | null {
+	if (target) return target;
+	return typeof window === 'undefined' ? null : window;
+}
+
+/**
+ * Follow the choice when it is made in another tab.
+ *
+ * The operator's setup is two tabs: the board on the projector, and the list on
+ * the laptop they are actually touching. `storage` fires in every OTHER tab on
+ * the origin, which is exactly the one that needs telling — the tab that
+ * toggled has already repainted itself.
+ *
+ * Returns the cleanup a Svelte `$effect` hands back, the same shape as
+ * `watchFullscreen`.
+ */
+export function watchTheme(target?: Window | null, root?: HTMLElement | null): () => void {
+	const listening = activeWindow(target);
+	if (!listening) return () => {};
+
+	const onStorage = (event: StorageEvent) => {
+		// A null key means the whole store was cleared, which is a real way for
+		// the choice to disappear; any other key is somebody else's business, and
+		// the organizer pubkey next to it changes far more often than this does.
+		if (event.key !== null && event.key !== THEME_STORAGE_KEY) return;
+
+		// `newValue` is as untrusted as anything else in localStorage, and it is
+		// null both when the key was removed and when the store was cleared.
+		const next = isTheme(event.newValue) ? event.newValue : DEFAULT_THEME;
+
+		theme.set(next);
+		applyTheme(next, root);
+	};
+
+	listening.addEventListener('storage', onStorage);
+	return () => listening.removeEventListener('storage', onStorage);
+}
+
 /** Flip the theme, remember it, and repaint. */
 export function toggleTheme(storage?: Storage | null, root?: HTMLElement | null): Theme {
 	let next: Theme = DEFAULT_THEME;
