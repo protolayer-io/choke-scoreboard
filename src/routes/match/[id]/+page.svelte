@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-	import { matchesMap, isMatchFresh } from '$lib/stores.js';
+	import { matchesMap, isMatchFresh, theme } from '$lib/stores.js';
 	import { MATCH_AGE_CHECK_INTERVAL_MS } from '$lib/constants.js';
 	import {
 		getF1EffectiveAdvantages,
@@ -13,6 +13,7 @@
 		isMatchPaused
 	} from '$lib/scoring.js';
 	import { alpha, sanitizeColor } from '$lib/colors.js';
+	import { getBoardPalette, glow, halfWash, tint, type BoardStatus } from '$lib/board-theme.js';
 	import { isFullscreen, toggleFullscreen } from '$lib/fullscreen.js';
 	import { t } from '$lib/i18n/index.js';
 	import { formatOutcome } from '$lib/i18n/outcome.js';
@@ -25,15 +26,22 @@
 	// The label is a message key, not a word — the wall has to say it in the
 	// language of the room it hangs in. The KEYS of this map are wire values and
 	// stay English forever; only the labels travel.
-	const STATUS_STYLES = {
-		waiting: { label: 'status.waiting', color: '#8a97b2', dot: '#8a97b2' },
-		'in-progress': { label: 'status.live', color: '#2ee08a', dot: '#16c05f' },
-		finished: { label: 'status.final', color: '#ffffff', dot: '#ffffff' },
-		canceled: { label: 'status.canceled', color: '#f87171', dot: '#ef4444' }
-	} as const;
-
-	/** A paused match is still 'in-progress', so it has no status of its own to style. */
-	const PAUSED_STYLE = { label: 'status.paused', color: '#f5b800', dot: '#f5b800' } as const;
+	//
+	// The colors that went with them now live in $lib/board-theme.js, because the
+	// board has two of everything: what reads as LIVE on near-black is a
+	// highlighter stroke on white. `paused` is here because a paused match is
+	// still 'in-progress' on the wire and has no status of its own to name.
+	//
+	// `satisfies` and not a type annotation: annotating would widen these to
+	// `string` and cost $t its key checking, which is all that stands between a
+	// typo here and a board saying `status.live` out loud.
+	const STATUS_LABELS = {
+		waiting: 'status.waiting',
+		'in-progress': 'status.live',
+		finished: 'status.final',
+		canceled: 'status.canceled',
+		paused: 'status.paused'
+	} as const satisfies Record<BoardStatus, string>;
 
 	let matchId = $derived($page.params.id ?? '');
 	let nowSeconds = $state(Math.floor(Date.now() / 1000));
@@ -90,20 +98,25 @@
 	let winner = $derived(match ? getWinner(match) : 0);
 	let result = $derived(match && isFinal ? formatOutcome($t, getOutcome(match)) : null);
 
+	// Which of the two boards this is. The theme is a property of the room rather
+	// than of the match: an organizer who put the app in light mode is looking at a
+	// bright hall or a projector that washes black out, and the wall should follow
+	// them there. Design 1A on dark, design 3A on light.
+	let palette = $derived(getBoardPalette($theme));
+
 	let f1Color = $derived(sanitizeColor(match?.f1_color, DEFAULT_F1_COLOR));
 	let f2Color = $derived(sanitizeColor(match?.f2_color, DEFAULT_F2_COLOR));
-	let winnerColor = $derived(winner === 1 ? f1Color : winner === 2 ? f2Color : '#ffffff');
 
-	let status = $derived(
-		isPaused ? PAUSED_STYLE : STATUS_STYLES[match?.status ?? 'waiting']
+	// The winner's color as TEXT, which on a light board is not the value the edge
+	// bar uses — see tint(). A draw has no color to borrow, and falls back to
+	// whatever a finished match reads as here.
+	let winnerColor = $derived(
+		winner === 0 ? palette.status.finished.color : tint(palette, winner === 1 ? f1Color : f2Color)
 	);
-	let statusColor = $derived(isFinal ? winnerColor : status.color);
-	let statusDot = $derived(isFinal ? winnerColor : status.dot);
 
-	/** Diagonal color wash behind a half, fading out toward the center. */
-	function halfBackground(color: string, angle: number): string {
-		return `linear-gradient(${angle}deg, ${alpha(color, 0.3)}, ${alpha(color, 0.05)} 55%, transparent 78%)`;
-	}
+	let statusKey = $derived<BoardStatus>(isPaused ? 'paused' : (match?.status ?? 'waiting'));
+	let statusColor = $derived(isFinal ? winnerColor : palette.status[statusKey].color);
+	let statusDot = $derived(isFinal ? winnerColor : palette.status[statusKey].dot);
 
 </script>
 
@@ -112,22 +125,26 @@
 </svelte:head>
 
 {#if match}
+	<!-- The three custom properties are for <Timer>, which is shared with the match
+	     list and so cannot reach this palette: --board-ink is the color it prints
+	     in, and the other two are the gold and red it switches to in the final
+	     seconds — both of which need a darker shade to survive a white card. -->
 	<div
 		class="relative h-full w-full overflow-hidden"
-		style="background:#05070e;font-family:'Barlow Condensed',system-ui,sans-serif"
+		style="background:{palette.surface};--board-ink:{palette.ink};--color-gold:{palette.warn};--color-red-penalty:{palette.danger};font-family:'Barlow Condensed',system-ui,sans-serif"
 	>
 		<!-- Color wash per half -->
-		<div class="absolute inset-y-0 left-0 w-1/2" style="background:{halfBackground(f1Color, 100)}"></div>
-		<div class="absolute inset-y-0 right-0 w-1/2" style="background:{halfBackground(f2Color, 260)}"></div>
+		<div class="absolute inset-y-0 left-0 w-1/2" style="background:{halfWash(palette, f1Color, 100)}"></div>
+		<div class="absolute inset-y-0 right-0 w-1/2" style="background:{halfWash(palette, f2Color, 260)}"></div>
 
 		<!-- Edge bars -->
 		<div
 			class="absolute inset-y-0 left-0 w-[11px]"
-			style="background:{f1Color};box-shadow:0 0 50px {alpha(f1Color, 0.6)}"
+			style="background:{f1Color};box-shadow:{glow(palette.edgeGlow, f1Color)}"
 		></div>
 		<div
 			class="absolute inset-y-0 right-0 w-[11px]"
-			style="background:{f2Color};box-shadow:0 0 50px {alpha(f2Color, 0.6)}"
+			style="background:{f2Color};box-shadow:{glow(palette.edgeGlow, f2Color)}"
 		></div>
 
 		<!-- Fighter 1 (left) -->
@@ -137,11 +154,11 @@
 			<div class="flex w-full min-w-0 items-center justify-center gap-[0.8vw]">
 				<span
 					class="h-[1.7vw] max-h-6 min-h-3 w-[1.7vw] max-w-6 min-w-3 shrink-0 rounded-md"
-					style="background:{f1Color};box-shadow:0 0 20px {alpha(f1Color, 0.6)}"
+					style="background:{f1Color};box-shadow:{glow(palette.chipGlow, f1Color)}"
 				></span>
 				<span
-					class="truncate font-extrabold tracking-wide text-white uppercase"
-					style="font-size:clamp(0.9rem,3.2vw,58px);line-height:1.1"
+					class="truncate font-extrabold tracking-wide uppercase"
+					style="color:{palette.ink};font-size:clamp(0.9rem,3.2vw,58px);line-height:1.1"
 				>
 					{match.f1_name}
 				</span>
@@ -150,8 +167,8 @@
 			<div class="flex flex-1 items-center justify-center">
 				{#key f1Score}
 					<div
-						class="animate-scorepop font-black text-white"
-						style="font-family:'Archivo',system-ui,sans-serif;font-size:clamp(4rem,13vw,232px);line-height:1;text-shadow:0 0 55px {alpha(f1Color, 0.6)}"
+						class="animate-scorepop font-black"
+						style="color:{palette.ink};font-family:'Archivo',system-ui,sans-serif;font-size:clamp(4rem,13vw,232px);line-height:1;text-shadow:{glow(palette.scoreGlow, f1Color)}"
 					>
 						{f1Score}
 					</div>
@@ -162,10 +179,10 @@
 				<div class="flex gap-[2vw]">
 					{#each f1Breakdown as { id, label, value } (id)}
 						<div class="text-center">
-							<div class="font-bold tracking-[0.16em]" style="color:#5f6d8a;font-size:clamp(0.6rem,1vw,19px)">
+							<div class="font-bold tracking-[0.16em]" style="color:{palette.muted};font-size:clamp(0.6rem,1vw,19px)">
 								{label}
 							</div>
-							<div class="mt-2 font-extrabold text-white" style="font-size:clamp(1.1rem,1.9vw,36px);line-height:1">
+							<div class="mt-2 font-extrabold" style="color:{palette.ink};font-size:clamp(1.1rem,1.9vw,36px);line-height:1">
 								{value}
 							</div>
 						</div>
@@ -174,17 +191,17 @@
 				<div class="flex gap-[0.7vw]">
 					<div
 						class="flex items-center gap-2 rounded-[10px] px-[1vw] py-[0.9vh]"
-						style="background:rgba(244,180,0,.14);border:1px solid rgba(244,180,0,.45)"
+						style="background:{palette.advantage.bg};border:1px solid {palette.advantage.border}"
 					>
-						<span class="font-bold tracking-[0.1em]" style="color:#f4b400;font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.advantages')}</span>
-						<span class="font-extrabold" style="color:#ffd451;font-size:clamp(0.85rem,1.4vw,27px)">{f1Adv}</span>
+						<span class="font-bold tracking-[0.1em]" style="color:{palette.advantage.label};font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.advantages')}</span>
+						<span class="font-extrabold" style="color:{palette.advantage.value};font-size:clamp(0.85rem,1.4vw,27px)">{f1Adv}</span>
 					</div>
 					<div
 						class="flex items-center gap-2 rounded-[10px] px-[1vw] py-[0.9vh]"
-						style="background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.5)"
+						style="background:{palette.penalty.bg};border:1px solid {palette.penalty.border}"
 					>
-						<span class="font-bold tracking-[0.1em]" style="color:#f87171;font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.penalties')}</span>
-						<span class="font-extrabold" style="color:#fca5a5;font-size:clamp(0.85rem,1.4vw,27px)">{match.f1_pen}</span>
+						<span class="font-bold tracking-[0.1em]" style="color:{palette.penalty.label};font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.penalties')}</span>
+						<span class="font-extrabold" style="color:{palette.penalty.value};font-size:clamp(0.85rem,1.4vw,27px)">{match.f1_pen}</span>
 					</div>
 				</div>
 			</div>
@@ -197,11 +214,11 @@
 			<div class="flex w-full min-w-0 items-center justify-center gap-[0.8vw]">
 				<span
 					class="h-[1.7vw] max-h-6 min-h-3 w-[1.7vw] max-w-6 min-w-3 shrink-0 rounded-md"
-					style="background:{f2Color};box-shadow:0 0 20px {alpha(f2Color, 0.6)}"
+					style="background:{f2Color};box-shadow:{glow(palette.chipGlow, f2Color)}"
 				></span>
 				<span
-					class="truncate font-extrabold tracking-wide text-white uppercase"
-					style="font-size:clamp(0.9rem,3.2vw,58px);line-height:1.1"
+					class="truncate font-extrabold tracking-wide uppercase"
+					style="color:{palette.ink};font-size:clamp(0.9rem,3.2vw,58px);line-height:1.1"
 				>
 					{match.f2_name}
 				</span>
@@ -210,8 +227,8 @@
 			<div class="flex flex-1 items-center justify-center">
 				{#key f2Score}
 					<div
-						class="animate-scorepop font-black text-white"
-						style="font-family:'Archivo',system-ui,sans-serif;font-size:clamp(4rem,13vw,232px);line-height:1;text-shadow:0 0 55px {alpha(f2Color, 0.6)}"
+						class="animate-scorepop font-black"
+						style="color:{palette.ink};font-family:'Archivo',system-ui,sans-serif;font-size:clamp(4rem,13vw,232px);line-height:1;text-shadow:{glow(palette.scoreGlow, f2Color)}"
 					>
 						{f2Score}
 					</div>
@@ -222,10 +239,10 @@
 				<div class="flex gap-[2vw]">
 					{#each f2Breakdown as { id, label, value } (id)}
 						<div class="text-center">
-							<div class="font-bold tracking-[0.16em]" style="color:#5f6d8a;font-size:clamp(0.6rem,1vw,19px)">
+							<div class="font-bold tracking-[0.16em]" style="color:{palette.muted};font-size:clamp(0.6rem,1vw,19px)">
 								{label}
 							</div>
-							<div class="mt-2 font-extrabold text-white" style="font-size:clamp(1.1rem,1.9vw,36px);line-height:1">
+							<div class="mt-2 font-extrabold" style="color:{palette.ink};font-size:clamp(1.1rem,1.9vw,36px);line-height:1">
 								{value}
 							</div>
 						</div>
@@ -234,17 +251,17 @@
 				<div class="flex gap-[0.7vw]">
 					<div
 						class="flex items-center gap-2 rounded-[10px] px-[1vw] py-[0.9vh]"
-						style="background:rgba(244,180,0,.14);border:1px solid rgba(244,180,0,.45)"
+						style="background:{palette.advantage.bg};border:1px solid {palette.advantage.border}"
 					>
-						<span class="font-bold tracking-[0.1em]" style="color:#f4b400;font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.advantages')}</span>
-						<span class="font-extrabold" style="color:#ffd451;font-size:clamp(0.85rem,1.4vw,27px)">{f2Adv}</span>
+						<span class="font-bold tracking-[0.1em]" style="color:{palette.advantage.label};font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.advantages')}</span>
+						<span class="font-extrabold" style="color:{palette.advantage.value};font-size:clamp(0.85rem,1.4vw,27px)">{f2Adv}</span>
 					</div>
 					<div
 						class="flex items-center gap-2 rounded-[10px] px-[1vw] py-[0.9vh]"
-						style="background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.5)"
+						style="background:{palette.penalty.bg};border:1px solid {palette.penalty.border}"
 					>
-						<span class="font-bold tracking-[0.1em]" style="color:#f87171;font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.penalties')}</span>
-						<span class="font-extrabold" style="color:#fca5a5;font-size:clamp(0.85rem,1.4vw,27px)">{match.f2_pen}</span>
+						<span class="font-bold tracking-[0.1em]" style="color:{palette.penalty.label};font-size:clamp(0.75rem,1.25vw,24px)">{$t('score.penalties')}</span>
+						<span class="font-extrabold" style="color:{palette.penalty.value};font-size:clamp(0.85rem,1.4vw,27px)">{match.f2_pen}</span>
 					</div>
 				</div>
 			</div>
@@ -252,9 +269,9 @@
 
 		<!-- Dim the loser's half -->
 		{#if winner === 2}
-			<div class="absolute inset-y-0 left-0 z-[4] w-1/2" style="background:rgba(5,7,14,.62)"></div>
+			<div class="absolute inset-y-0 left-0 z-[4] w-1/2" style="background:{palette.loserDim}"></div>
 		{:else if winner === 1}
-			<div class="absolute inset-y-0 right-0 z-[4] w-1/2" style="background:rgba(5,7,14,.62)"></div>
+			<div class="absolute inset-y-0 right-0 z-[4] w-1/2" style="background:{palette.loserDim}"></div>
 		{/if}
 
 		<!-- Center column: status, timer, VS -->
@@ -276,13 +293,13 @@
 			>
 				<span
 					class="h-3 w-3 shrink-0 rounded-full {isLive && !isPaused ? 'animate-liveblink' : ''}"
-					style="background:{statusDot};box-shadow:0 0 14px {statusDot}"
+					style="background:{statusDot};box-shadow:{glow(palette.dotGlow, statusDot)}"
 				></span>
 				<span
 					class="min-w-0 truncate font-bold tracking-[0.16em]"
 					style="color:{statusColor};font-size:clamp(0.7rem,1.25vw,24px)"
 				>
-					{$t(status.label)}
+					{$t(STATUS_LABELS[statusKey])}
 				</span>
 			</div>
 
@@ -290,16 +307,16 @@
 				{#if showTimer}
 					<div
 						class="flex flex-col items-center gap-3 rounded-[18px] px-[1.8vw] py-[2.5vh]"
-						style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);box-shadow:0 0 60px rgba(0,0,0,.45)"
+						style="background:{palette.card.bg};border:1px solid {palette.card.border};box-shadow:{palette.card.shadow}"
 					>
-						<span class="font-bold tracking-[0.3em]" style="color:#5f6d8a;font-size:clamp(0.55rem,0.9vw,17px)">
+						<span class="font-bold tracking-[0.3em]" style="color:{palette.muted};font-size:clamp(0.55rem,0.9vw,17px)">
 							{$t('score.time')}
 						</span>
 						<Timer {match} tone="bright" class="text-[clamp(2.5rem,5.2vw,76px)] leading-none" />
 					</div>
 					<div
 						class="font-extrabold tracking-[0.14em]"
-						style="color:rgba(255,255,255,.16);font-size:clamp(1rem,1.7vw,32px)"
+						style="color:{palette.vs};font-size:clamp(1rem,1.7vw,32px)"
 					>
 						{$t('score.vs')}
 					</div>
@@ -310,16 +327,25 @@
 		<!-- Winner banner -->
 		{#if isFinal && result}
 			<div
-				class="animate-sweep-in absolute top-1/2 left-1/2 z-[6] flex max-w-[86vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4 rounded-3xl px-[3vw] py-[3vh] text-center backdrop-blur-sm"
-				style="background:rgba(5,7,14,.72)"
+				class="animate-sweep-in absolute top-1/2 left-1/2 z-[6] flex max-w-[86vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4 rounded-3xl px-[3vw] py-[3vh] text-center {palette
+					.banner.frosted
+					? 'backdrop-blur-sm'
+					: ''}"
+				style="background:{palette.banner.bg};border:1px solid {alpha(
+					winnerColor,
+					palette.banner.lineOpacity
+				)};box-shadow:{palette.banner.shadow}"
 			>
-				<div class="font-bold tracking-[0.36em]" style="color:#8a97b2;font-size:clamp(0.7rem,1.25vw,24px)">
+				<div class="font-bold tracking-[0.36em]" style="color:{palette.bannerMuted};font-size:clamp(0.7rem,1.25vw,24px)">
 					{winner === 0 ? $t('score.result') : $t('score.winner')}
 				</div>
 				{#if winner !== 0}
 					<div
 						class="font-extrabold uppercase"
-						style="color:{winnerColor};font-size:clamp(2rem,6vw,86px);line-height:1;text-shadow:0 0 46px {alpha(winnerColor, 0.6)}"
+						style="color:{winnerColor};font-size:clamp(2rem,6vw,86px);line-height:1;text-shadow:{glow(
+							palette.nameGlow,
+							winnerColor
+						)}"
 					>
 						{winner === 1 ? match.f1_name : match.f2_name}
 					</div>
@@ -332,7 +358,7 @@
 						{result.method}
 					</span>
 				</div>
-				<div class="font-semibold" style="color:#8a97b2;font-size:clamp(0.8rem,1.3vw,25px)">
+				<div class="font-semibold" style="color:{palette.bannerMuted};font-size:clamp(0.8rem,1.3vw,25px)">
 					{result.detail}
 				</div>
 			</div>
@@ -341,7 +367,7 @@
 		<!-- Overlay controls -->
 		<a
 			href="{base}/"
-			class="absolute top-4 left-6 z-10 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-white/60 no-underline transition-colors hover:bg-white/10 hover:text-white"
+			class="absolute top-4 left-6 z-10 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm no-underline transition-colors {palette.chrome}"
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<polyline points="15 18 9 12 15 6" />
@@ -352,13 +378,16 @@
 		<button
 			type="button"
 			onclick={() => toggleFullscreen()}
-			class="absolute top-4 right-6 z-10 rounded-lg px-3 py-2 text-sm text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+			class="absolute top-4 right-6 z-10 rounded-lg px-3 py-2 text-sm transition-colors {palette.chrome}"
 		>
 			{$isFullscreen ? $t('fullscreen.exit') : $t('fullscreen.enter')}
 		</button>
 	</div>
 {:else}
-	<div class="flex h-full flex-col items-center justify-center text-center" style="background:#05070e">
+	<div
+		class="flex h-full flex-col items-center justify-center text-center"
+		style="background:{palette.surface}"
+	>
 		<span class="text-5xl">🤷</span>
 		<p class="mt-4 text-lg font-medium" style="color: var(--text-secondary);">{$t('match.notFoundTitle')}</p>
 		<p class="mt-1 text-sm" style="color: var(--text-secondary);">

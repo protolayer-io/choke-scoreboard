@@ -28,6 +28,11 @@ export function sanitizeColor(value: string | undefined, fallback: string): stri
 	return fallback;
 }
 
+/** A 0–1 ratio as the whole-number percentage color-mix() wants. */
+function toPercent(amount: number): number {
+	return Math.round(Math.min(Math.max(amount, 0), 1) * 100);
+}
+
 /**
  * Derive a translucent variant of any CSS color.
  *
@@ -37,6 +42,19 @@ export function sanitizeColor(value: string | undefined, fallback: string): stri
  * @param amount opacity between 0 and 1
  */
 export function alpha(color: string, amount: number): string {
-	const percent = Math.round(Math.min(Math.max(amount, 0), 1) * 100);
-	return `color-mix(in srgb, ${color} ${percent}%, transparent)`;
+	return `color-mix(in srgb, ${color} ${toPercent(amount)}%, transparent)`;
+}
+
+/**
+ * Derive a darker variant of any CSS color.
+ *
+ * What this is for: a fighter's color is picked to be seen as a BLOCK — a belt
+ * chip, an edge bar — and organizers pick bright ones. Set that same value as
+ * TEXT on a white board and a yellow fighter disappears. Mixing black back in
+ * keeps the color recognisably theirs while giving it something to stand on.
+ *
+ * @param amount how much black to mix in, between 0 (unchanged) and 1 (black)
+ */
+export function darken(color: string, amount: number): string {
+	return `color-mix(in srgb, ${color} ${100 - toPercent(amount)}%, black)`;
 }

@@ -14,12 +14,20 @@
 
 	let { match, large = false, class: typography = '', tone = 'muted' }: Props = $props();
 
+	/**
+	 * `bright` means "the loudest color on the surface behind me", and that surface
+	 * is not always dark: the broadcast board has a light theme (design 3A) where
+	 * the clock is near-black ink on a white card. That board sets --board-ink; the
+	 * fallback keeps every other caller on white.
+	 */
+	const BRIGHT = 'var(--board-ink, #ffffff)';
+
 	let displayTime = $state(computeDisplay());
 	let warning = $state(false);
 	let expired = $state(false);
 	let paused = $state(false);
 
-	let baseColor = $derived(tone === 'bright' ? '#ffffff' : 'var(--text-secondary)');
+	let baseColor = $derived(tone === 'bright' ? BRIGHT : 'var(--text-secondary)');
 
 	function computeDisplay(): string {
 		switch (match.status) {

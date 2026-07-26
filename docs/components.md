@@ -79,6 +79,11 @@ Countdown timer display.
 | `class` | `string` | `''` | Typography override; when set, the caller owns font family and size |
 | `tone` | `'muted' \| 'bright'` | `'muted'` | Base color when the timer is neither in warning nor expired |
 
+`tone="bright"` means "the loudest color on the surface behind me", not "white": it resolves to
+`var(--board-ink, #ffffff)`. The broadcast board sets `--board-ink` — along with `--color-gold` and
+`--color-red-penalty` — from its palette, so the clock is white on the dark board and near-black on
+the light one. See [the broadcast board](#broadcast-board) below.
+
 **Behavior:**
 - `waiting` → Shows total duration (e.g., "5:00")
 - `in-progress` → Counts down every 1 second
@@ -101,3 +106,34 @@ would look like a simplification and would silently restore a delay of up to a s
 
 The ticker stops itself once the clock reaches 0:00, because a match stays `in-progress` until the
 referee names the outcome.
+
+## Broadcast board
+
+`src/routes/match/[id]/+page.svelte` — the full-viewport match view, the one screen that is watched
+rather than used. It has no header and no footer (see the `isBroadcast` branch in
+`src/routes/+layout.svelte`).
+
+**It was drawn twice.** Design 1A puts it on near-black; design 3A is the same board on paper white,
+for a bright hall or a projector that washes black out. The board follows the app's `theme` store, so
+an organizer who switches the app to light mode gets the light board too.
+
+Both palettes live in `src/lib/board-theme.ts`, and the component renders once against whichever
+`getBoardPalette($theme)` returns. Nothing about the layout, the copy or the animations is themed —
+only color.
+
+What separates them is not only flat values. A fighter's color arrives from a Nostr event and gets
+composed at render time, so the module exposes the recipes as well:
+
+| Export | What it answers |
+|--------|-----------------|
+| `getBoardPalette(theme)` | Every flat color: surface, ink, chips, card, banner, per-status |
+| `halfWash(palette, color, angle)` | The diagonal wash behind one half — lighter and longer on white |
+| `glow(spec, color)` | Edge bar, name chip, score, winner name, live dot; `'none'` where light drops it |
+| `tint(palette, color)` | A fighter's color made safe to read **as text**. Identity on dark; darkened on light, where a yellow belt on white is invisible |
+
+`tint()` is the one to remember. The same hex can be a solid block (an edge bar, a 24px chip) and a
+string of text (the winner's name), and only the second one needs the surface to push back.
+
+**The theme is in-memory.** `theme` in `src/lib/stores.ts` is not persisted, so a page load — including
+a shared deep link straight to `/match/<id>` — starts on the dark board regardless of what the last
+visit chose.
