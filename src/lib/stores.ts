@@ -22,7 +22,6 @@ export const ALL_MATCH_STATUSES: readonly MatchStatus[] = [
 export const DEFAULT_STATUS_FILTER: readonly MatchStatus[] = ['waiting', 'in-progress'];
 
 const STORAGE_KEY_PUBKEY = 'choke:organizer-pubkey';
-const STORAGE_KEY_THEME = 'choke:theme';
 
 /** Map of match id → MatchEvent, reactive store */
 export const matchesMap = writable<Map<string, MatchEvent>>(new Map());
@@ -60,7 +59,12 @@ export const activePubkey = writable<string>('');
 /** Loading state for Nostr subscription */
 export const isLoading = writable<boolean>(false);
 
-/** Theme: 'dark' | 'light' */
+/**
+ * Theme: 'dark' | 'light'.
+ *
+ * Lives here because half the app reads it; everything that CHANGES it — the
+ * toggle, the memory of it, the class on <html> — is in `theme.ts`.
+ */
 export const theme = writable<'dark' | 'light'>('dark');
 
 /** Save organizer pubkey to localStorage */

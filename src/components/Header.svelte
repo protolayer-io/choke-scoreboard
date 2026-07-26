@@ -1,17 +1,10 @@
 <script lang="ts">
 	import { theme } from '$lib/stores.js';
+	import { toggleTheme } from '$lib/theme.js';
 	import { t } from '$lib/i18n/index.js';
 	import { base } from '$app/paths';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import FullscreenToggle from './FullscreenToggle.svelte';
-
-	function toggleTheme(): void {
-		theme.update((t) => {
-			const next = t === 'dark' ? 'light' : 'dark';
-			document.documentElement.classList.toggle('light', next === 'light');
-			return next;
-		});
-	}
 
 	let currentTheme = $state<'dark' | 'light'>('dark');
 
@@ -65,7 +58,7 @@
 			<FullscreenToggle />
 
 			<button
-				onclick={toggleTheme}
+				onclick={() => toggleTheme()}
 				class="flex items-center justify-center transition-colors hover:opacity-80"
 				style="width: 40px; height: 40px; border-radius: 10px; background: var(--pill-bg); border: 1px solid var(--pill-border); color: var(--icon-muted);"
 				aria-label={$t('header.toggleTheme')}

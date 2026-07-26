@@ -4,6 +4,7 @@
 	import Header from '../components/Header.svelte';
 	import { initLocale, locale, t } from '$lib/i18n/index.js';
 	import { watchFullscreen } from '$lib/fullscreen.js';
+	import { initTheme } from '$lib/theme.js';
 
 	let { children } = $props();
 
@@ -17,6 +18,14 @@
 	// where there is no browser to ask — until here, in the browser, there is.
 	$effect(() => {
 		initLocale();
+	});
+
+	// Adopt the theme the operator last chose. `app.html` has already put the
+	// class on <html> — before the first paint, which is the point of it — so
+	// what this adds is the store: the board and the cards read their palettes
+	// from it, and it starts every session on the default.
+	$effect(() => {
+		initTheme();
 	});
 
 	// The broadcast match view owns the whole viewport: no header, no footer.
