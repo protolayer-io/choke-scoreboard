@@ -55,7 +55,8 @@ function fakeHost(startMs: number) {
 		/**
 		 * Fire the earliest timeout, optionally `latenessMs` after it was due —
 		 * which is what a busy main thread, a throttled tab or a laptop waking from
-		 * sleep actually does to a timer.
+		 * sleep actually does to a timer. A negative value fires it early, which is
+		 * what a clock that moved under the timer looks like.
 		 */
 		runNext(latenessMs = 0) {
 			const next = earliest();
@@ -103,12 +104,6 @@ describe('delayToNextTick', () => {
 		expect(delay).toBe(1000 + TICK_GUARD_MS);
 	});
 
-	it('clears the boundary rather than sitting on it', () => {
-		// A timer may fire a hair early, and `Math.floor(now / 1000)` would then
-		// still read the old second — the tick would repaint the same digits and
-		// the real change would wait a full second more.
-		expect(TICK_GUARD_MS).toBeGreaterThan(0);
-	});
 });
 
 describe('startSecondAlignedTicker', () => {
@@ -167,6 +162,75 @@ describe('startSecondAlignedTicker', () => {
 		// Assert — one tick to the next boundary, no backlog of missed ones
 		expect(landingOffset(clock.now(), clock.nextDelay())).toBe(TICK_GUARD_MS);
 		expect(clock.pendingCount()).toBe(1);
+	});
+
+	it('re-aligns after a tick that lands before the boundary', () => {
+		// Arrange — the delay is computed from `Date.now()`, a wall clock, while the
+		// timer that honours it is measured against the browser's own. A clock that
+		// steps under a pending timer, or one deliberately coarsened for privacy,
+		// can land the tick a few ms short — where `Math.floor(now / 1000)` still
+		// reads the second that is about to end.
+		const clock = fakeHost(1_700_000_000_000);
+		startSecondAlignedTicker(() => {}, clock.host);
+
+		// Act — 10 ms early
+		clock.runNext(-10);
+
+		// Assert — back on the boundary at the next tick, not a second later
+		expect(landingOffset(clock.now(), clock.nextDelay())).toBe(TICK_GUARD_MS);
+		expect(clock.nextDelay()).toBeLessThan(1000);
+	});
+
+	it('keeps the clock running when a tick throws', () => {
+		// Arrange — `setInterval` survived this: the browser re-fires it whatever the
+		// callback did. Dropping a frame is a blink nobody sees; a wall clock frozen
+		// for the rest of the match, with no error anywhere, is the match ruined.
+		const clock = fakeHost(1_700_000_000_000);
+		const onTick = vi.fn(() => {
+			throw new Error('bad frame');
+		});
+		startSecondAlignedTicker(onTick, clock.host);
+
+		// Act — the throw escapes the callback, as it does from any timer
+		expect(() => clock.runNext()).toThrow('bad frame');
+
+		// Assert — the next tick is scheduled anyway, still on the boundary
+		expect(clock.pendingCount()).toBe(1);
+		expect(landingOffset(clock.now(), clock.nextDelay())).toBe(TICK_GUARD_MS);
+	});
+
+	it('does not schedule another tick when a throwing ticker was stopped', () => {
+		// Arrange — surviving a throw must not mean outliving the component
+		const clock = fakeHost(1_700_000_000_000);
+		const stop = startSecondAlignedTicker(() => {
+			stop();
+			throw new Error('bad frame');
+		}, clock.host);
+
+		// Act
+		expect(() => clock.runNext()).toThrow('bad frame');
+
+		// Assert
+		expect(clock.pendingCount()).toBe(0);
+	});
+
+	it('lets a tick stop the ticker from inside itself', () => {
+		// Arrange — how Timer.svelte quits at 0:00. Expiry is a fact about the clock,
+		// not about the match, so nothing else is going to come along and stop it.
+		const clock = fakeHost(1_700_000_000_000);
+		let ticks = 0;
+		const stop = startSecondAlignedTicker(() => {
+			ticks++;
+			if (ticks === 2) stop();
+		}, clock.host);
+
+		// Act
+		clock.runNext();
+		clock.runNext();
+
+		// Assert — stopped itself on the second tick, and nothing is left pending
+		expect(ticks).toBe(2);
+		expect(clock.pendingCount()).toBe(0);
 	});
 
 	it('stops when told to, leaving no timer behind', () => {

@@ -24,11 +24,23 @@
 /**
  * How far past the boundary to aim.
  *
- * Timers are allowed to fire a hair early, and landing at 999.6 ms means
- * `Math.floor(now / 1000)` still reads the second that is about to end: the tick
- * repaints the digits already showing, and the real change waits out another
- * whole second. A few milliseconds of margin costs nothing anyone can see and
- * makes that impossible.
+ * Landing a hair BEFORE the boundary is the one useless place to land: at
+ * 999.6 ms `Math.floor(now / 1000)` still reads the second that is about to end,
+ * so the tick repaints the digits already showing and the real change waits out
+ * another whole second.
+ *
+ * A spec-compliant `setTimeout` cannot do that on its own — it waits AT LEAST the
+ * delay it was given, and browsers only ever clamp it longer. This is margin
+ * against the two ways the clock can move out from under it: the delay is
+ * computed from `Date.now()`, a wall clock an NTP step can shift, while the timer
+ * honouring it is measured against the browser's own; and `Date.now()` may be
+ * deliberately coarsened for privacy (Firefox's `privacy.resistFingerprinting`
+ * clamps it to 100 ms), which can round it forward and make the delay short.
+ *
+ * So the margin is defensive, not load-bearing, and an early landing is survived
+ * either way: the next delay is computed from wherever the clock actually is, so
+ * a short tick costs one extra wakeup and re-aligns immediately. A few
+ * milliseconds nobody can see is worth not relying on that.
  */
 export const TICK_GUARD_MS = 5;
 
@@ -74,10 +86,20 @@ export function startSecondAlignedTicker(
 		handle = host.setTimeout(() => {
 			handle = null;
 			if (stopped) return;
-			onTick();
-			// Re-read the clock rather than assuming this ran on time: that is what
-			// keeps a late tick from dragging every tick after it.
-			if (!stopped) schedule();
+			try {
+				onTick();
+			} finally {
+				// In `finally`, so one throwing tick cannot end the countdown. An
+				// interval survived a bad callback — the browser re-fires it whatever
+				// happened — and scheduling after the call instead would freeze the
+				// clock at that second for the rest of the match, with nothing left
+				// pending and nobody told. The throw still propagates.
+				//
+				// Re-reading the clock here is also what keeps a LATE tick from
+				// dragging every tick after it: the next delay is measured from where
+				// the clock actually is, not from where this tick was due.
+				if (!stopped) schedule();
+			}
 		}, delayToNextTick(host.now()));
 	}
 
