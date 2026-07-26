@@ -10,7 +10,8 @@ import {
 	initTheme,
 	persistTheme,
 	readStoredTheme,
-	toggleTheme
+	toggleTheme,
+	watchTheme
 } from './theme.js';
 import { theme } from './stores.js';
 // The shell itself, as text. `?raw` rather than node:fs so the suite needs no
@@ -212,6 +213,80 @@ describe('toggleTheme', () => {
 		expect(next).toBe('dark');
 		expect(root.classList.contains(THEME_CLASS)).toBe(false);
 		expect(readStoredTheme(storage)).toBe('dark');
+	});
+});
+
+describe('watchTheme', () => {
+	/**
+	 * The operator's setup is two tabs: the board on the projector, and the list
+	 * on the laptop they are actually touching. `storage` fires in every tab but
+	 * the one that wrote, so this is the projector's only way to hear about it.
+	 */
+	function announce(key: string | null, newValue: string | null): void {
+		window.dispatchEvent(new StorageEvent('storage', { key, newValue }));
+	}
+
+	let stop: () => void = () => {};
+
+	beforeEach(() => {
+		stop = watchTheme(window, root);
+	});
+
+	afterEach(() => stop());
+
+	it('adopts a theme chosen in another tab', () => {
+		// Arrange / Act
+		announce(THEME_STORAGE_KEY, 'light');
+
+		// Assert
+		expect(get(theme)).toBe('light');
+		expect(root.classList.contains(THEME_CLASS)).toBe(true);
+	});
+
+	it('follows it back to dark', () => {
+		announce(THEME_STORAGE_KEY, 'light');
+		announce(THEME_STORAGE_KEY, 'dark');
+
+		expect(get(theme)).toBe('dark');
+		expect(root.classList.contains(THEME_CLASS)).toBe(false);
+	});
+
+	it('ignores another key’s business', () => {
+		// Arrange — start away from the default, or this proves nothing: without
+		// the key filter an unrecognised value falls back to the default anyway,
+		// and the assertion would pass on a listener that reacts to everything.
+		// The organizer pubkey shares this storage and changes far more often.
+		announce(THEME_STORAGE_KEY, 'light');
+		expect(get(theme)).toBe('light');
+
+		// Act
+		announce('choke:organizer-pubkey', 'npub1…');
+
+		// Assert — still light, and still marked
+		expect(get(theme)).toBe('light');
+		expect(root.classList.contains(THEME_CLASS)).toBe(true);
+	});
+
+	it('falls back to the default when the choice is cleared or unreadable', () => {
+		announce(THEME_STORAGE_KEY, 'light');
+		expect(get(theme)).toBe('light');
+
+		// localStorage.clear() announces a null key and a null value.
+		announce(null, null);
+		expect(get(theme)).toBe(DEFAULT_THEME);
+
+		announce(THEME_STORAGE_KEY, 'LIGHT');
+		expect(get(theme)).toBe(DEFAULT_THEME);
+	});
+
+	it('stops listening once the effect is torn down', () => {
+		// A board navigating between the list and a match would otherwise stack a
+		// listener per visit, each one still writing to the same store.
+		stop();
+
+		announce(THEME_STORAGE_KEY, 'light');
+
+		expect(get(theme)).toBe(DEFAULT_THEME);
 	});
 });
 
