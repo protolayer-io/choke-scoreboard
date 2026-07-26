@@ -331,7 +331,10 @@ const CARD_LIGHT: CardPalette = {
 	border: 'rgba(13,21,38,.1)',
 	shadow: '0 10px 28px rgba(13,21,38,.1)',
 	ink: '#0d1526',
-	dimName: '#8a94ab',
+	// The loser's name has to read as sunk WITHOUT becoming unreadable: it is
+	// still one of the two names on the card. This lands near 3.5:1 on white,
+	// which is about where #66738f sits against the navy card.
+	dimName: '#7c879c',
 	dimScore: '#b6bdcc',
 	muted: '#68758f',
 	clock: '#5b6780',
