@@ -1,9 +1,11 @@
 /**
- * The two palettes of the broadcast board.
+ * The palettes of the two surfaces that show a score: the full-viewport
+ * broadcast board, and the match card on the list.
  *
  * The board was drawn twice: design 1A on near-black, design 3A on paper white.
  * They are the same board — same layout, same animations, same fighter colors —
- * so the component renders once and reads its colors from here.
+ * so the component renders once and reads its colors from here. The card follows
+ * it, for the reason written above `CARD_LIGHT`.
  *
  * Why a module and not CSS variables: half of what separates the two drawings is
  * not a color but a RECIPE applied to a color nobody knew at build time. The
@@ -25,6 +27,22 @@ export type BoardStatus = MatchStatus | 'paused';
 
 /** A glow, as its CSS geometry plus how much of the tint to bloom. */
 export type GlowSpec = { geometry: string; opacity: number } | 'none';
+
+/**
+ * The diagonal wash of a fighter's color across their half: how strong it starts
+ * at the outer edge, what it has faded to by `fade`, and where it lets go.
+ */
+export interface WashSpec {
+	strength: number;
+	mid: number;
+	fade: string;
+	end: string;
+}
+
+/** Anything that knows how far to darken a fighter's color. See `tint()`. */
+interface Tintable {
+	tintAmount: number;
+}
 
 /** The ADV and PEN chips: a tinted box with a label and a count. */
 export interface BoardChip {
@@ -52,8 +70,8 @@ export interface BoardPalette {
 	vs: string;
 	/** Tailwind classes for the overlay controls, hover states included. */
 	chrome: string;
-	/** The diagonal wash behind a half: strength at the edge, and its two stops. */
-	wash: { strength: number; fade: string; end: string };
+	/** The diagonal wash behind a half. */
+	wash: WashSpec;
 	/** Under the edge bar running down the outside of a half. */
 	edgeGlow: GlowSpec;
 	/** Under the color chip beside a fighter's name. */
@@ -94,7 +112,7 @@ const DARK: BoardPalette = {
 	loserDim: 'rgba(5,7,14,.62)',
 	vs: 'rgba(255,255,255,.16)',
 	chrome: 'text-white/60 hover:bg-white/10 hover:text-white',
-	wash: { strength: 0.3, fade: '55%', end: '78%' },
+	wash: { strength: 0.3, mid: 0.05, fade: '55%', end: '78%' },
 	edgeGlow: { geometry: '0 0 50px', opacity: 0.6 },
 	chipGlow: { geometry: '0 0 20px', opacity: 0.6 },
 	scoreGlow: { geometry: '0 0 55px', opacity: 0.6 },
@@ -146,7 +164,7 @@ const LIGHT: BoardPalette = {
 	loserDim: 'rgba(244,246,251,.72)',
 	vs: 'rgba(13,21,38,.16)',
 	chrome: 'text-[#68758f] hover:bg-black/5 hover:text-[#0d1526]',
-	wash: { strength: 0.22, fade: '58%', end: '80%' },
+	wash: { strength: 0.22, mid: 0.05, fade: '58%', end: '80%' },
 	edgeGlow: { geometry: '0 0 44px', opacity: 0.32 },
 	// Light drops the glow that surrounds and lifts the one that falls: on paper,
 	// a shape is grounded by its shadow, not by a halo.
@@ -191,9 +209,194 @@ const LIGHT: BoardPalette = {
 	danger: '#991b1b'
 };
 
+/** A tinted box on the card: status pill, ADV, PEN. */
+export interface CardChip {
+	bg: string;
+	border: string;
+	text: string;
+}
+
+/**
+ * The match card on the list — design 2A. Smaller than the board and drawn in
+ * its own proportions, but the same idea: two fighters, their colors, a score.
+ */
+export interface CardPalette {
+	surface: string;
+	border: string;
+	shadow: string;
+	/** Names and scores of whoever is still in it. */
+	ink: string;
+	/** The loser, once there is one: sunk toward the background, not deleted. */
+	dimName: string;
+	dimScore: string;
+	/** The point breakdown's labels in broadcast mode. */
+	muted: string;
+	/** The clock in the corner. Small type, so it gets more contrast than `muted`. */
+	clock: string;
+	vs: string;
+	wash: WashSpec;
+	advantage: CardChip;
+	penalty: CardChip;
+	status: Record<BoardStatus, CardChip & { dot: string }>;
+	/** The strip under a live card. */
+	liveBar: { border: string; bg: string; dot: string; text: string };
+	/** The running clock between the two fighters. */
+	liveClock: CardChip;
+	/** The strip under a finished card, saying how it ended. */
+	outcome: { border: string; bg: string; method: string; detail: string };
+	tintAmount: number;
+	warn: string;
+	danger: string;
+}
+
+/** Design 2A — the card on navy. */
+const CARD_DARK: CardPalette = {
+	surface: '#0b1120',
+	border: 'rgba(255,255,255,.07)',
+	shadow: '0 10px 28px rgba(0,0,0,.35)',
+	ink: '#ffffff',
+	dimName: '#66738f',
+	dimScore: '#414d68',
+	muted: '#5f6d8a',
+	clock: '#4a5878',
+	vs: '#556489',
+	wash: { strength: 0.16, mid: 0.02, fade: '60%', end: '82%' },
+	advantage: { bg: 'rgba(244,180,0,.16)', border: 'rgba(244,180,0,.45)', text: '#f4c453' },
+	penalty: { bg: 'rgba(239,68,68,.16)', border: 'rgba(239,68,68,.5)', text: '#fca5a5' },
+	status: {
+		'in-progress': {
+			bg: 'rgba(22,192,95,.14)',
+			border: 'rgba(22,192,95,.5)',
+			text: '#2ee08a',
+			dot: '#16c05f'
+		},
+		waiting: {
+			bg: 'rgba(244,180,0,.12)',
+			border: 'rgba(244,180,0,.4)',
+			text: '#f4c453',
+			dot: '#f4b400'
+		},
+		finished: {
+			bg: 'rgba(255,255,255,.05)',
+			border: 'rgba(255,255,255,.12)',
+			text: '#a7b2ce',
+			dot: '#5f6d8a'
+		},
+		canceled: {
+			bg: 'rgba(239,68,68,.14)',
+			border: 'rgba(239,68,68,.5)',
+			text: '#fca5a5',
+			dot: '#ef4444'
+		},
+		paused: {
+			bg: 'rgba(245,184,0,.12)',
+			border: 'rgba(245,184,0,.4)',
+			text: '#f5b800',
+			dot: '#f5b800'
+		}
+	},
+	liveBar: {
+		border: 'rgba(22,192,95,.18)',
+		bg: 'rgba(22,192,95,.05)',
+		dot: '#2ee08a',
+		text: '#3ee08a'
+	},
+	liveClock: { bg: 'rgba(22,192,95,.12)', border: 'rgba(22,192,95,.4)', text: '#3ee08a' },
+	outcome: {
+		border: 'rgba(255,255,255,.07)',
+		bg: 'rgba(255,255,255,.015)',
+		method: '#f4c453',
+		detail: '#8391b0'
+	},
+	tintAmount: 0,
+	warn: '#f5b800',
+	danger: '#c0392b'
+};
+
+/**
+ * The card on paper white.
+ *
+ * There is no mock for this one. The card used to be navy in BOTH themes, on the
+ * argument that it is a scoreboard and scoreboards are dark — but that argument
+ * died with design 3A, which is a scoreboard on white. A dark card on a light
+ * list is now the only thing in the app that does not follow the theme.
+ *
+ * So it is derived rather than drawn: surface and ink from 3A, and the chips from
+ * the light values `app.css` already gives the status filter, which sits directly
+ * above these cards and would otherwise disagree with them about what LIVE
+ * looks like.
+ */
+const CARD_LIGHT: CardPalette = {
+	surface: '#ffffff',
+	border: 'rgba(13,21,38,.1)',
+	shadow: '0 10px 28px rgba(13,21,38,.1)',
+	ink: '#0d1526',
+	dimName: '#8a94ab',
+	dimScore: '#b6bdcc',
+	muted: '#68758f',
+	clock: '#5b6780',
+	vs: '#8a94ab',
+	wash: { strength: 0.14, mid: 0.02, fade: '60%', end: '82%' },
+	advantage: { bg: 'rgba(202,138,4,.12)', border: 'rgba(202,138,4,.42)', text: '#854d0e' },
+	penalty: { bg: 'rgba(220,38,38,.1)', border: 'rgba(220,38,38,.42)', text: '#991b1b' },
+	status: {
+		'in-progress': {
+			bg: 'rgba(22,192,95,.12)',
+			border: 'rgba(4,120,87,.45)',
+			text: '#047857',
+			dot: '#16c05f'
+		},
+		waiting: {
+			bg: 'rgba(244,180,0,.15)',
+			border: 'rgba(146,64,14,.4)',
+			text: '#92400e',
+			dot: '#ca8a04'
+		},
+		finished: {
+			bg: 'rgba(0,0,0,.05)',
+			border: 'rgba(0,0,0,.2)',
+			text: '#374151',
+			dot: '#6b7280'
+		},
+		canceled: {
+			bg: 'rgba(239,68,68,.1)',
+			border: 'rgba(185,28,28,.4)',
+			text: '#b91c1c',
+			dot: '#dc2626'
+		},
+		paused: {
+			bg: 'rgba(245,184,0,.12)',
+			border: 'rgba(146,64,14,.4)',
+			text: '#a16207',
+			dot: '#ca8a04'
+		}
+	},
+	liveBar: {
+		border: 'rgba(4,120,87,.2)',
+		bg: 'rgba(22,192,95,.07)',
+		dot: '#16c05f',
+		text: '#047857'
+	},
+	liveClock: { bg: 'rgba(22,192,95,.1)', border: 'rgba(4,120,87,.35)', text: '#047857' },
+	outcome: {
+		border: 'rgba(13,21,38,.1)',
+		bg: 'rgba(13,21,38,.02)',
+		method: '#a16207',
+		detail: '#5b6780'
+	},
+	tintAmount: 0.28,
+	warn: '#a16207',
+	danger: '#991b1b'
+};
+
 /** The palette the board paints itself with under the app's current theme. */
 export function getBoardPalette(theme: BoardTheme): BoardPalette {
 	return theme === 'light' ? LIGHT : DARK;
+}
+
+/** The palette the match card paints itself with under the app's current theme. */
+export function getCardPalette(theme: BoardTheme): CardPalette {
+	return theme === 'light' ? CARD_LIGHT : CARD_DARK;
 }
 
 /**
@@ -208,13 +411,17 @@ export function glow(spec: GlowSpec, color: string): string {
 	return `${spec.geometry} ${alpha(color, spec.opacity)}`;
 }
 
-/** The diagonal wash behind one half, fading out toward the center. */
-export function halfWash(palette: BoardPalette, color: string, angle: number): string {
-	const { strength, fade, end } = palette.wash;
-	return `linear-gradient(${angle}deg, ${alpha(color, strength)}, ${alpha(color, 0.05)} ${fade}, transparent ${end})`;
+/**
+ * The diagonal wash behind one half, fading out toward the center.
+ *
+ * Takes the spec and not the palette, because the board and the card wash their
+ * halves in the same way at different strengths.
+ */
+export function halfWash(wash: WashSpec, color: string, angle: number): string {
+	return `linear-gradient(${angle}deg, ${alpha(color, wash.strength)}, ${alpha(color, wash.mid)} ${wash.fade}, transparent ${wash.end})`;
 }
 
-/** A fighter's color, made safe to read as text on this board. */
-export function tint(palette: BoardPalette, color: string): string {
+/** A fighter's color, made safe to read as text on this surface. */
+export function tint(palette: Tintable, color: string): string {
 	return palette.tintAmount === 0 ? color : darken(color, palette.tintAmount);
 }

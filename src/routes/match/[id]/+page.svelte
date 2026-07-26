@@ -134,8 +134,8 @@
 		style="background:{palette.surface};--board-ink:{palette.ink};--color-gold:{palette.warn};--color-red-penalty:{palette.danger};font-family:'Barlow Condensed',system-ui,sans-serif"
 	>
 		<!-- Color wash per half -->
-		<div class="absolute inset-y-0 left-0 w-1/2" style="background:{halfWash(palette, f1Color, 100)}"></div>
-		<div class="absolute inset-y-0 right-0 w-1/2" style="background:{halfWash(palette, f2Color, 260)}"></div>
+		<div class="absolute inset-y-0 left-0 w-1/2" style="background:{halfWash(palette.wash, f1Color, 100)}"></div>
+		<div class="absolute inset-y-0 right-0 w-1/2" style="background:{halfWash(palette.wash, f2Color, 260)}"></div>
 
 		<!-- Edge bars -->
 		<div

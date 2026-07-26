@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { getBoardPalette, glow, halfWash, tint, type BoardStatus } from './board-theme.js';
+import {
+	getBoardPalette,
+	getCardPalette,
+	glow,
+	halfWash,
+	tint,
+	type BoardStatus
+} from './board-theme.js';
 
 /**
  * The broadcast board is the only screen in this app that is *watched* rather
@@ -72,6 +79,49 @@ describe('getBoardPalette', () => {
 	});
 });
 
+describe('getCardPalette', () => {
+	it('gives the card a status color for every state a match can be in', () => {
+		const light = getCardPalette('light');
+		const dark = getCardPalette('dark');
+
+		for (const status of ALL_STATUSES) {
+			expect(light.status[status], status).toBeDefined();
+			expect(dark.status[status], status).toBeDefined();
+		}
+	});
+
+	it('never puts white text on the light card', () => {
+		// The card used to be navy under BOTH themes, so its ink was a literal
+		// white on purpose. Missing one of these leaves text invisible on paper.
+		const light = getCardPalette('light');
+		const isWhite = (color: string) => ['#fff', '#ffffff', 'white'].includes(color.toLowerCase());
+
+		for (const role of ['ink', 'dimName', 'dimScore', 'muted', 'clock', 'vs'] as const) {
+			expect(isWhite(light[role]), role).toBe(false);
+		}
+		for (const status of ALL_STATUSES) {
+			expect(isWhite(light.status[status].text), status).toBe(false);
+		}
+	});
+
+	it('keeps the losing side distinct from the winning side, on both cards', () => {
+		// The dim is the card's only way of saying who lost. Letting it collapse
+		// into the ink — easy to do on light, where dimmer means *lighter* — would
+		// leave a decided match looking like an undecided one.
+		for (const theme of ['dark', 'light'] as const) {
+			const card = getCardPalette(theme);
+			expect(card.dimName, theme).not.toBe(card.ink);
+			expect(card.dimScore, theme).not.toBe(card.ink);
+		}
+	});
+
+	it('darkens a fighter’s color for the light card, as the board does', () => {
+		// A winning score is printed in the fighter's own color, at 52px.
+		expect(tint(getCardPalette('light'), '#ffd451')).toBe('color-mix(in srgb, #ffd451 72%, black)');
+		expect(tint(getCardPalette('dark'), '#ffd451')).toBe('#ffd451');
+	});
+});
+
 describe('tint', () => {
 	it('darkens a fighter color before the light board reads it as text', () => {
 		// Arrange
@@ -107,7 +157,7 @@ describe('glow', () => {
 
 describe('halfWash', () => {
 	it('washes the half in the fighter’s color at the theme’s strength', () => {
-		expect(halfWash(getBoardPalette('dark'), '#13c88a', 100)).toBe(
+		expect(halfWash(getBoardPalette('dark').wash, '#13c88a', 100)).toBe(
 			'linear-gradient(100deg, color-mix(in srgb, #13c88a 30%, transparent), color-mix(in srgb, #13c88a 5%, transparent) 55%, transparent 78%)'
 		);
 	});
@@ -115,7 +165,7 @@ describe('halfWash', () => {
 	it('holds the light wash back, and fades it later', () => {
 		// 3A: a lighter tint, carried further before it lets go, so the white
 		// center still reads as one board rather than two panels.
-		expect(halfWash(getBoardPalette('light'), '#13c88a', 260)).toBe(
+		expect(halfWash(getBoardPalette('light').wash, '#13c88a', 260)).toBe(
 			'linear-gradient(260deg, color-mix(in srgb, #13c88a 22%, transparent), color-mix(in srgb, #13c88a 5%, transparent) 58%, transparent 80%)'
 		);
 	});

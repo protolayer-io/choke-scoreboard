@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { MatchEvent, MatchStatus, ViewMode } from '$lib/types.js';
+	import type { MatchEvent, ViewMode } from '$lib/types.js';
 	import {
 		formatTime,
 		getF1EffectiveAdvantages,
@@ -10,7 +10,9 @@
 		getWinner,
 		isMatchPaused
 	} from '$lib/scoring.js';
-	import { alpha, sanitizeColor } from '$lib/colors.js';
+	import { sanitizeColor } from '$lib/colors.js';
+	import { getCardPalette, halfWash, tint, type BoardStatus } from '$lib/board-theme.js';
+	import { theme } from '$lib/stores.js';
 	import { t } from '$lib/i18n/index.js';
 	import { formatOutcome } from '$lib/i18n/outcome.js';
 	import Timer from './Timer.svelte';
@@ -23,52 +25,21 @@
 
 	let { match, mode }: Props = $props();
 
-	// The card's own status pill (design 2A). The KEYS of this map are wire
-	// values and stay English forever; only the labels travel through $t.
-	const STATUS_STYLES = {
-		'in-progress': {
-			label: 'status.live',
-			color: '#2ee08a',
-			dot: '#16c05f',
-			bg: 'rgba(22,192,95,.14)',
-			border: 'rgba(22,192,95,.5)',
-			blink: true
-		},
-		waiting: {
-			label: 'status.waiting',
-			color: '#f4c453',
-			dot: '#f4b400',
-			bg: 'rgba(244,180,0,.12)',
-			border: 'rgba(244,180,0,.4)',
-			blink: false
-		},
-		finished: {
-			label: 'status.finished',
-			color: '#a7b2ce',
-			dot: '#5f6d8a',
-			bg: 'rgba(255,255,255,.05)',
-			border: 'rgba(255,255,255,.12)',
-			blink: false
-		},
-		canceled: {
-			label: 'status.canceled',
-			color: '#fca5a5',
-			dot: '#ef4444',
-			bg: 'rgba(239,68,68,.14)',
-			border: 'rgba(239,68,68,.5)',
-			blink: false
-		}
-	} as const satisfies Record<MatchStatus, object>;
-
-	/** A paused match is still 'in-progress', so it has no status of its own to style. */
-	const PAUSED_STYLE = {
-		label: 'status.paused',
-		color: '#f5b800',
-		dot: '#f5b800',
-		bg: 'rgba(245,184,0,.12)',
-		border: 'rgba(245,184,0,.4)',
-		blink: false
-	} as const;
+	// The card's own status pill (design 2A). The KEYS of this map are wire values
+	// and stay English forever; only the labels travel through $t.
+	//
+	// The colors that went with them now live in $lib/board-theme.js: the card is
+	// drawn twice, like the board it links to. `paused` is here because a paused
+	// match is still 'in-progress' on the wire and has no status of its own.
+	//
+	// `satisfies` and not a type annotation, so $t keeps checking these keys.
+	const STATUS_LABELS = {
+		'in-progress': 'status.live',
+		waiting: 'status.waiting',
+		finished: 'status.finished',
+		canceled: 'status.canceled',
+		paused: 'status.paused'
+	} as const satisfies Record<BoardStatus, string>;
 
 	// Defaults from the design's own palette, used when the event names none.
 	const DEFAULT_F1_COLOR = '#13c88a';
@@ -104,16 +75,29 @@
 	let f1Color = $derived(sanitizeColor(match.f1_color, DEFAULT_F1_COLOR));
 	let f2Color = $derived(sanitizeColor(match.f2_color, DEFAULT_F2_COLOR));
 
-	let pill = $derived(isLive && isPaused ? PAUSED_STYLE : STATUS_STYLES[match.status]);
+	// The card is drawn twice, like the board it links to: design 2A on navy, and
+	// its own light counterpart. It used to be navy under both themes on the
+	// argument that a scoreboard is dark — an argument design 3A retired.
+	let card = $derived(getCardPalette($theme));
 
-	// Winner white, loser sunk into the background; undecided keeps both bright.
-	// Literal white, not var(--text-primary): the card is dark in BOTH themes
-	// (it is a scoreboard, like the broadcast view), so the token would paint
-	// near-black text on a navy card the moment the light theme loaded.
-	let f1NameColor = $derived(decided ? (winner === 1 ? '#ffffff' : '#66738f') : '#ffffff');
-	let f2NameColor = $derived(decided ? (winner === 2 ? '#ffffff' : '#66738f') : '#ffffff');
-	let f1ScoreColor = $derived(decided ? (winner === 1 ? f1Color : '#414d68') : '#ffffff');
-	let f2ScoreColor = $derived(decided ? (winner === 2 ? f2Color : '#414d68') : '#ffffff');
+	let statusKey = $derived<BoardStatus>(isLive && isPaused ? 'paused' : match.status);
+	let pill = $derived(card.status[statusKey]);
+
+	// Winner in the card's ink, loser sunk toward the background; undecided keeps
+	// both bright. Which way "sunk" goes is a property of the theme — on navy the
+	// loser gets darker, on paper it gets lighter — so it comes from the palette
+	// and never from a literal here.
+	let f1NameColor = $derived(decided && winner !== 1 ? card.dimName : card.ink);
+	let f2NameColor = $derived(decided && winner !== 2 ? card.dimName : card.ink);
+
+	// A winning score is printed in the fighter's own color, so it goes through
+	// tint(): at 52px on white, an unmodified bright belt color is not a color.
+	let f1ScoreColor = $derived(
+		decided ? (winner === 1 ? tint(card, f1Color) : card.dimScore) : card.ink
+	);
+	let f2ScoreColor = $derived(
+		decided ? (winner === 2 ? tint(card, f2Color) : card.dimScore) : card.ink
+	);
 
 	// The corner clock (design 2A): a finished card shows how long the match
 	// was, a waiting or canceled one has nothing to say yet, and a live one
@@ -126,17 +110,17 @@
 	class="relative block overflow-hidden no-underline transition-transform duration-200 hover:scale-[1.01] {isCanceled
 		? 'opacity-50'
 		: ''}"
-	style="border-radius: 16px; background: #0b1120; border: 1px solid rgba(255,255,255,.07); box-shadow: 0 10px 28px rgba(0,0,0,.35); font-family: 'Barlow Condensed', system-ui, sans-serif;"
+	style="border-radius: 16px; background: {card.surface}; border: 1px solid {card.border}; box-shadow: {card.shadow}; font-family: 'Barlow Condensed', system-ui, sans-serif; --color-gold: {card.warn}; --color-red-penalty: {card.danger};"
 >
 	<!-- Per-fighter color washes and edge bars: the fighter's color is the
 	     protagonist (design 2A). -->
 	<div
 		class="pointer-events-none absolute"
-		style="inset: 0 50% 0 0; background: linear-gradient(100deg, {alpha(f1Color, 0.16)}, {alpha(f1Color, 0.02)} 60%, transparent 82%);"
+		style="inset: 0 50% 0 0; background: {halfWash(card.wash, f1Color, 100)};"
 	></div>
 	<div
 		class="pointer-events-none absolute"
-		style="inset: 0 0 0 50%; background: linear-gradient(260deg, {alpha(f2Color, 0.16)}, {alpha(f2Color, 0.02)} 60%, transparent 82%);"
+		style="inset: 0 0 0 50%; background: {halfWash(card.wash, f2Color, 260)};"
 	></div>
 	<div class="absolute top-0 bottom-0 left-0" style="width: 5px; background: {f1Color};"></div>
 	<div class="absolute top-0 right-0 bottom-0" style="width: 5px; background: {f2Color};"></div>
@@ -148,15 +132,15 @@
 			style="gap: 8px; padding: 5px 12px; border-radius: 999px; background: {pill.bg}; border: 1px solid {pill.border};"
 		>
 			<span
-				class="rounded-full {pill.blink ? 'animate-liveblink' : ''}"
+				class="rounded-full {isLive && !isPaused ? 'animate-liveblink' : ''}"
 				style="width: 8px; height: 8px; background: {pill.dot};"
 			></span>
-			<span style="font-weight: 700; font-size: 13px; letter-spacing: .14em; color: {pill.color};"
-				>{$t(pill.label)}</span
+			<span style="font-weight: 700; font-size: 13px; letter-spacing: .14em; color: {pill.text};"
+				>{$t(STATUS_LABELS[statusKey])}</span
 			>
 		</span>
 		<span
-			style="font-family: 'Chakra Petch', monospace; font-weight: 600; font-size: 15px; letter-spacing: .06em; color: #4a5878; font-variant-numeric: tabular-nums; --text-secondary: #4a5878;"
+			style="font-family: 'Chakra Petch', monospace; font-weight: 600; font-size: 15px; letter-spacing: .06em; color: {card.clock}; font-variant-numeric: tabular-nums; --text-secondary: {card.clock};"
 		>
 			{#if isLive}
 				<Timer {match} class="text-[15px] font-semibold" />
@@ -187,14 +171,14 @@
 				{#if f1Adv > 0}
 					<span
 						class="whitespace-nowrap"
-						style="padding: 3px 9px; border-radius: 7px; background: rgba(244,180,0,.16); border: 1px solid rgba(244,180,0,.45); font-weight: 700; font-size: 13px; letter-spacing: .08em; color: #f4c453;"
+						style="padding: 3px 9px; border-radius: 7px; background: {card.advantage.bg}; border: 1px solid {card.advantage.border}; font-weight: 700; font-size: 13px; letter-spacing: .08em; color: {card.advantage.text};"
 						>{$t('score.advantages')} {f1Adv}</span
 					>
 				{/if}
 				{#if match.f1_pen > 0}
 					<span
 						class="whitespace-nowrap"
-						style="padding: 3px 9px; border-radius: 7px; background: rgba(239,68,68,.16); border: 1px solid rgba(239,68,68,.5); font-weight: 700; font-size: 13px; letter-spacing: .08em; color: #fca5a5;"
+						style="padding: 3px 9px; border-radius: 7px; background: {card.penalty.bg}; border: 1px solid {card.penalty.border}; font-weight: 700; font-size: 13px; letter-spacing: .08em; color: {card.penalty.text};"
 						>{$t('score.penalties')} {match.f1_pen}</span
 					>
 				{/if}
@@ -206,12 +190,12 @@
 			{#if isLive}
 				<span
 					class="inline-flex items-center {isPaused ? '' : 'animate-tick'}"
-					style="gap: 7px; padding: 5px 13px; border-radius: 8px; background: rgba(22,192,95,.12); border: 1px solid rgba(22,192,95,.4); font-family: 'Chakra Petch', monospace; font-variant-numeric: tabular-nums; --text-secondary: #3ee08a;"
+					style="gap: 7px; padding: 5px 13px; border-radius: 8px; background: {card.liveClock.bg}; border: 1px solid {card.liveClock.border}; font-family: 'Chakra Petch', monospace; font-variant-numeric: tabular-nums; --text-secondary: {card.liveClock.text};"
 				>
 					<Timer {match} class="text-[17px] font-bold" />
 				</span>
 			{:else}
-				<span style="font-weight: 700; font-size: 16px; line-height: 1; letter-spacing: .1em; color: #556489;"
+				<span style="font-weight: 700; font-size: 16px; line-height: 1; letter-spacing: .1em; color: {card.vs};"
 					>{$t('score.vs')}</span
 				>
 			{/if}
@@ -233,14 +217,14 @@
 				{#if f2Adv > 0}
 					<span
 						class="whitespace-nowrap"
-						style="padding: 3px 9px; border-radius: 7px; background: rgba(244,180,0,.16); border: 1px solid rgba(244,180,0,.45); font-weight: 700; font-size: 13px; letter-spacing: .08em; color: #f4c453;"
+						style="padding: 3px 9px; border-radius: 7px; background: {card.advantage.bg}; border: 1px solid {card.advantage.border}; font-weight: 700; font-size: 13px; letter-spacing: .08em; color: {card.advantage.text};"
 						>{$t('score.advantages')} {f2Adv}</span
 					>
 				{/if}
 				{#if match.f2_pen > 0}
 					<span
 						class="whitespace-nowrap"
-						style="padding: 3px 9px; border-radius: 7px; background: rgba(239,68,68,.16); border: 1px solid rgba(239,68,68,.5); font-weight: 700; font-size: 13px; letter-spacing: .08em; color: #fca5a5;"
+						style="padding: 3px 9px; border-radius: 7px; background: {card.penalty.bg}; border: 1px solid {card.penalty.border}; font-weight: 700; font-size: 13px; letter-spacing: .08em; color: {card.penalty.text};"
 						>{$t('score.penalties')} {match.f2_pen}</span
 					>
 				{/if}
@@ -253,24 +237,24 @@
 	{#if outcome}
 		<div
 			class="relative flex items-center justify-center"
-			style="margin-top: 8px; padding: 12px 22px; border-top: 1px solid rgba(255,255,255,.07); gap: 12px; background: rgba(255,255,255,.015);"
+			style="margin-top: 8px; padding: 12px 22px; border-top: 1px solid {card.outcome.border}; gap: 12px; background: {card.outcome.bg};"
 		>
-			<span style="font-weight: 800; font-size: 15px; letter-spacing: .12em; color: #f4c453;"
+			<span style="font-weight: 800; font-size: 15px; letter-spacing: .12em; color: {card.outcome.method};"
 				>{outcome.method}</span
 			>
-			<span style="font-weight: 500; font-size: 16px; color: #8391b0;">{outcome.detail}</span>
+			<span style="font-weight: 500; font-size: 16px; color: {card.outcome.detail};">{outcome.detail}</span>
 		</div>
 	{:else if isLive}
 		<!-- The green strip under a live card (design 2A) -->
 		<div
 			class="relative flex items-center justify-center"
-			style="margin-top: 8px; padding: 11px 22px; border-top: 1px solid rgba(22,192,95,.18); gap: 9px; background: rgba(22,192,95,.05);"
+			style="margin-top: 8px; padding: 11px 22px; border-top: 1px solid {card.liveBar.border}; gap: 9px; background: {card.liveBar.bg};"
 		>
 			<span
 				class="animate-liveblink rounded-full"
-				style="width: 7px; height: 7px; background: #2ee08a;"
+				style="width: 7px; height: 7px; background: {card.liveBar.dot};"
 			></span>
-			<span style="font-weight: 700; font-size: 14px; letter-spacing: .14em; color: #3ee08a;"
+			<span style="font-weight: 700; font-size: 14px; letter-spacing: .14em; color: {card.liveBar.text};"
 				>{$t('status.inProgress')}</span
 			>
 		</div>
@@ -278,21 +262,21 @@
 
 	<!-- Point breakdown (broadcast mode) -->
 	{#if isBroadcast}
-		<div class="relative border-t" style="padding: 12px 22px; border-color: rgba(255,255,255,.07);">
+		<div class="relative border-t" style="padding: 12px 22px; border-color: {card.border};">
 			<div
 				class="grid grid-cols-[1fr_auto_1fr] text-center"
-				style="gap: 16px; font-weight: 600; font-size: 15px; letter-spacing: .06em; color: #5f6d8a;"
+				style="gap: 16px; font-weight: 600; font-size: 15px; letter-spacing: .06em; color: {card.muted};"
 			>
 				<div class="flex justify-center" style="gap: 12px;">
-					<span>{$t('score.pt2.card')} <span style="color: #ffffff;">{match.f1_pt2}</span></span>
-					<span>{$t('score.pt3.card')} <span style="color: #ffffff;">{match.f1_pt3}</span></span>
-					<span>{$t('score.pt4.card')} <span style="color: #ffffff;">{match.f1_pt4}</span></span>
+					<span>{$t('score.pt2.card')} <span style="color: {card.ink};">{match.f1_pt2}</span></span>
+					<span>{$t('score.pt3.card')} <span style="color: {card.ink};">{match.f1_pt3}</span></span>
+					<span>{$t('score.pt4.card')} <span style="color: {card.ink};">{match.f1_pt4}</span></span>
 				</div>
 				<span>{$t('score.points')}</span>
 				<div class="flex justify-center" style="gap: 12px;">
-					<span>{$t('score.pt2.card')} <span style="color: #ffffff;">{match.f2_pt2}</span></span>
-					<span>{$t('score.pt3.card')} <span style="color: #ffffff;">{match.f2_pt3}</span></span>
-					<span>{$t('score.pt4.card')} <span style="color: #ffffff;">{match.f2_pt4}</span></span>
+					<span>{$t('score.pt2.card')} <span style="color: {card.ink};">{match.f2_pt2}</span></span>
+					<span>{$t('score.pt3.card')} <span style="color: {card.ink};">{match.f2_pt3}</span></span>
+					<span>{$t('score.pt4.card')} <span style="color: {card.ink};">{match.f2_pt4}</span></span>
 				</div>
 			</div>
 		</div>
