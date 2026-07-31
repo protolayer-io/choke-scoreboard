@@ -1,13 +1,26 @@
 # Shared Links
 
-**Status: agreed — ready to implement. Nothing described here as new is built
-yet.** The board link (`?npub=…`) is **built and in production** — see
-`src/lib/share-link.ts` and `src/components/PubkeyInput.svelte`. The match link
-(`?npub=…&match=…`) is **specified and not implemented**: nothing in `src/`
-reads a `match` parameter today. The companion specification lives in the Choke
-app repository at `docs/specs/shared-match-links.md`, and the URL contract in
-§1 is shared between the two — neither side may extend it alone. Build order,
-including the cross-repo ordering both documents depend on, is §6.
+**Status: the readers are landing; nothing produces a match link yet.**
+
+- The board link (`?npub=…`) is **built and in production** — `src/lib/share-link.ts`
+  and `src/components/PubkeyInput.svelte`.
+- The match link (`?npub=…&match=…`) is **read and resolved on the web**.
+  `readSharedMatchLink` and `stripSharedLinkFromUrl` (`src/lib/share-link.ts`)
+  parse and clear it; `src/routes/+page.svelte` resolves it in place through
+  `findMatchByOrganizer` (`src/lib/stores.ts`) and `relaysSettled`
+  (`src/lib/nostr.ts`), and renders it with `src/components/MatchView.svelte`.
+- The Choke app **parses** the same URL (its step 1, PR #154 there) but does not
+  yet **show** the named match: its resolution and waiting behaviour is still
+  owed. See its `docs/specs/shared-match-links.md`.
+- **Nothing anywhere produces a match link.** There is no share affordance in
+  either repo. `buildShareLink` here assembles the format for the tests to
+  round-trip and has no caller in the UI (§2.1), which is deliberate: readers
+  land before writers (§6.2).
+
+The companion specification lives in the Choke app repository at
+`docs/specs/shared-match-links.md`, and the URL contract in §1 is shared between
+the two — neither side may extend it alone. Build order, including the
+cross-repo ordering both documents depend on, is §6.
 
 ## Why links exist at all
 
@@ -31,8 +44,8 @@ reorders itself as matches start and finish.
 | Match | `match=<match id>` |
 
 ```text
-https://bjjscore.live/?npub=npub1…            board link (shipped)
-https://bjjscore.live/?npub=npub1…&match=abcd match link (specified)
+https://bjjscore.live/?npub=npub1…            board link
+https://bjjscore.live/?npub=npub1…&match=abcd match link
 ```
 
 The organizer *value* comes in two shapes — an `npub1…` bech32 string or a
@@ -126,14 +139,17 @@ There is no version of this link that produces an error on an old client. That
 property is what makes it shippable at all.
 
 The cached-bundle fallback is nonetheless a **known limitation, not a clean
-one**. The old bundle opens the organizer's board — correct — but leaves
-`?match=…` stranded in the address bar, because `stripSharedPubkeyFromUrl`
-removes only the pubkey param. A viewer who refreshes from there, or forwards
-what they see, produces a URL carrying `match` and no `npub`: the broken form
-§1 defines. Landing on the board is right; the URL left behind is wrong, and
-stays wrong until the strip fix (§4, step 1 of §6.3) ships. Nothing in this repo
-can retroactively fix a bundle already cached on someone's device, which is one
-more reason the strip fix belongs in the *first* change, not the last.
+one**. An old bundle opens the organizer's board — correct — but leaves
+`?match=…` stranded in the address bar, because the strip it carries removes
+only the pubkey param. A viewer who refreshes from there, or forwards what they
+see, produces a URL carrying `match` and no `npub`: the broken form §1 defines.
+Landing on the board is right; the URL left behind is wrong.
+
+Current bundles no longer do this — `stripSharedLinkFromUrl` removes both params
+together or neither (§4) — but nothing in this repo can retroactively fix a
+bundle already cached on someone's device. That is why the strip fix was step 1
+of §6.3 and not a tidy-up at the end: every day it did not ship was another day
+of caches to outlive.
 
 ### 1.3 Why `match=` and not `id=`
 
@@ -141,8 +157,8 @@ more reason the strip fix belongs in the *first* change, not the last.
 into group chats and spreadsheets and will outlive the code that reads it. The
 day the site gains event or tournament pages, a bare `id` has to be
 disambiguated by whatever else happens to be in the query string — and by then
-the old links are in the wild. `match=` says what it names, and costs nothing
-today because nothing has shipped yet.
+the old links are in the wild. `match=` says what it names, and cost nothing to
+choose while no link had yet been produced.
 
 Nor is there a precedent for accepting two names. This repo once read the
 organizer key under `pubkey=` as well as `npub=`, to absorb historical drift
@@ -172,46 +188,64 @@ a link misbehaves.
 | Symbol | What it does |
 |---|---|
 | `SHARE_PUBKEY_PARAM` | `'npub'` — one name, no alias (§1.3) |
+| `SHARE_MATCH_PARAM` | `'match'` — likewise (§1.3) |
 | `readSharedPubkey(search)` | Returns the value, trimmed and otherwise untouched, or `null` if empty or absent |
-| `stripSharedPubkeyFromUrl()` | Deletes that param from the address bar via `history.replaceState` |
-| `buildShareLink(origin, npub)` | Assembles `origin/?npub=…` |
+| `readSharedMatchId(search)` | Applies §1's parsing order to the decoded value; `null` if absent or failing the grammar |
+| `readSharedMatchLink(search)` | Composes the two into `{ kind: 'none' \| 'broken' \| 'match' }` |
+| `stripSharedLinkFromUrl()` | Deletes **both** params from the address bar via `history.replaceState` |
+| `buildShareLink(origin, npub, matchId?)` | Assembles `origin/?npub=…[&match=…]`, always on the root path |
 
 `readSharedPubkey` deliberately does **not** validate. Decoding is
 `decodePubkey`'s job, so a malformed link surfaces the very same error a bad
-paste would, in the viewer's language.
+paste would, in the viewer's language. `readSharedMatchId` does the opposite and
+validates fully, because there is no later step that would: the grammar in §1 is
+all a match id has.
+
+The three kinds of `readSharedMatchLink` are the URL contract, not an
+implementation convenience. `broken` is returned for an id that fails the grammar
+*and* for a well-formed id with no readable organizer — both name nothing — and
+it is deliberately not the same answer as an id the feed does not contain (§3.2).
 
 `buildShareLink` is exported and covered by `src/lib/share-link.test.ts`, but it
 has **no caller in the UI** — nothing on the web board offers a link to copy.
-It exists so the format has a single source of truth the tests can round-trip.
-Whoever implements match links inherits the same obligation: extend it there, or
-the two halves of the contract start drifting.
+It exists so the format has a single source of truth the tests can round-trip,
+and it pins the root path for the reason §1.1 gives.
 
-### 2.2 `src/components/PubkeyInput.svelte`
+### 2.2 `src/components/PubkeyInput.svelte`, and what it never sees
 
-`onMount` is where a link becomes a subscription:
+`onMount` is where a **board** link becomes a subscription:
 
 1. `readSharedPubkey(window.location.search)` — a shared link **beats** the
    persisted key. Someone following a link means to watch *that* organizer now,
    not whatever this device last looked at.
 2. `decodePubkey` → `connectToPubkey` → `subscribeToMatches`.
-3. `stripSharedPubkeyFromUrl()` — the key is persisted separately, so a later
+3. `stripSharedLinkFromUrl()` — the key is persisted separately, so a later
    refresh restores it from storage rather than re-applying a URL the viewer may
    have navigated away from.
 4. A link that fails to decode is stripped anyway and falls back to the
    persisted key, so a bad link never strands the viewer.
+
+**A match link and this component cannot coexist**, and an earlier draft of this
+document assumed they could. Step 3 strips on mount, which §4 forbids for a match
+link: nothing persists a match id, so stripping it before resolution completes
+throws away the only copy. There is no ordering of the two that works — the
+component's whole contract is that the URL is disposable the moment it is read.
+
+So the root page does not render `PubkeyInput` in match-link mode at all. The
+input is not on screen; the viewport is the match the link named. The strip in
+step 3 is therefore always a board link's, which is what makes it safe.
+
+That left `connectToPubkey` with two callers — the input, and the root page
+resolving a link — so it moved out of the component into `src/lib/connect.ts`.
+It is the same four steps it always was (`clearMatches`, `debugMode`,
+`activePubkey`, `persistPubkey`, `subscribeToMatches`); only its home changed.
 
 ## 3. Resolution semantics
 
 ### 3.1 The hard part is waiting, not parsing
 
 `src/routes/match/[id]/+page.svelte` reads its match out of the `matchesMap`
-store:
-
-```ts
-let stored = $derived<MatchEvent | undefined>($matchesMap.get(matchId));
-```
-
-That store is filled by the board subscription (`subscribeToMatches` in
+store. That store is filled by the board subscription (`subscribeToMatches` in
 `src/lib/nostr.ts`, via `upsertMatch`). Nothing else fills it. So a **cold visit
 finds nothing**: open `/match/abcd` in a fresh tab and the route renders its
 not-found branch immediately, because no subscription has ever run.
@@ -235,21 +269,34 @@ match that happens to have collided in a 16-bit space (§1), and treating it as
 this link's subject would show one organizer's fight to another organizer's
 guests, or declare a live match over because an unrelated one aged out.
 
-This is a **change, not a description**. `matchesMap` in `src/lib/stores.ts` is
-keyed by match id alone, which is safe today only because the board subscribes to
-exactly one author at a time and `subscribeToMatches` closes the previous
-subscription before opening the next. A match link makes the author an explicit
-part of what the URL names, so the resolution path must compare it rather than
-assume it. Coverage for **two different authors publishing the same match id** is
-owed alongside that change (§7).
+`matchesMap` in `src/lib/stores.ts` is still keyed by match id alone, which is
+safe only because the board subscribes to exactly one author at a time and
+`subscribeToMatches` closes the previous subscription before opening the next. A
+match link makes the author an explicit part of what the URL names, so the
+resolution path compares it rather than assuming it: `findMatchByOrganizer`
+(`src/lib/stores.ts`) rejects a hit whose `pubkey` is not the organizer the link
+named, and applies `isMatchFresh` in the same place so an expired match is
+`undefined` for the same reason a missing one is.
 
-### 3.2 Three states, and the middle one must exist
+Both readers of the store go through it — the root page for a shared link, and
+the match route, which could have got away with the id and does not, because
+"could get away with" is how the collision arrives. Coverage for **two different
+authors publishing the same match id** is in `src/routes/page.test.ts` and
+`src/lib/stores.test.ts`.
+
+### 3.2 Four states, and the two nobody thinks to build
 
 | State | Condition | What is shown |
 |---|---|---|
 | **Pending** | A match has been named; the feed has not answered yet | A waiting state that says so |
 | **Resolved** | The event arrived and is fresh | The match view, as reached from the board today |
 | **Unresolved** | The feed settled and this id is not in it | Say that plainly, mention it may have ended, keep the board reachable |
+| **Broken** | The URL never named a match: the id failed the grammar, or there is no readable organizer (§1) | Say the *link* is unreadable and to ask the sender for another |
+
+Pending and Broken are the two an implementation skips by accident. Pending
+because the happy path is fast on a warm relay, so "not found" looks correct
+right up until someone opens the link on a train; Broken because §1 defines it
+and nothing forces you to give it words.
 
 "The feed settles eventually" is not something two teams can implement the same
 way twice, so the rules below are **normative** and shared with the companion
@@ -278,71 +325,124 @@ spec:
    it worked is a lie they cannot catch. The board stays one deliberate tap away,
    never a silent substitution.
 
-**Rule 1 needs work in both readers, but not the same work.** In the Choke app,
+**Rule 1 needed work in both readers, but not the same work.** In the Choke app,
 `NostrRelayBackend` exposes only `Stream<NostrEvent> get events` — end-of-stored-
 events is never carried across that boundary, so the signal does not reach Dart
-at all and has to be plumbed through before anything can wait on it. Here the
-signal already arrives: `subscribeToMatches` in `src/lib/nostr.ts` passes an
-`oneose` handler to `SimplePool.subscribeMany` (`src/lib/nostr.ts:292`). What it
-does with it is the problem — `oneose` only clears the shared `isLoading` store,
-which the 10-second `setTimeout` at `src/lib/nostr.ts:302` also clears. A caller
-watching `isLoading` cannot tell "the relays answered" from "ten seconds passed",
-and gets whichever happened first. That is enough for a spinner over a list and
-not enough for rule 1. So: over there, new capability; here, an existing signal
-that needs its own channel instead of being folded into a boolean.
+at all and has to be plumbed through before anything can wait on it; that is
+still owed there. Here the signal already arrived — `subscribeToMatches` in
+`src/lib/nostr.ts` passes an `oneose` handler to `SimplePool.subscribeMany` — but
+`oneose` only cleared the shared `isLoading` store, which the 10-second
+`setTimeout` beneath it also clears. A caller watching `isLoading` cannot tell
+"the relays answered" from "ten seconds passed", and gets whichever happened
+first. Enough for a spinner over a list; not enough for rule 1.
 
-Two further traps in that same code, for whoever implements step 2 of §6.3:
+So EOSE now has its own channel: `relaysSettled` in `src/lib/stores.ts`, set by
+`oneose` and by nothing else. The timeout deliberately leaves it alone.
+`subscribeToMatches` resets it to `false` on every subscription including a
+watchdog rebuild, and `closeSubscription` clears it, so a stale `true` can never
+let a link conclude the relays answered on a socket that is gone.
+
+Two further traps in that same code, which the implementation had to route
+around and the next person will meet again:
 
 - **Matching the number is not the same as reusing the store.** The backstop of
-  rule 2 is now the same ten seconds `subscribeToMatches` already uses, which is
-  the point — but the match view still owns its own timer. Deriving Pending from
+  rule 2 is the same ten seconds `subscribeToMatches` already uses — one
+  constant, `MATCH_LINK_BACKSTOP_MS` in `src/lib/constants.ts`, which both now
+  read. But the waiting view owns its own timer. Deriving Pending from
   `isLoading` would make it end on whichever of EOSE-or-timeout fired first with
   no way to know which, and rule 3 needs that distinction: a resolve after EOSE
   means the relays genuinely do not have the event, while a resolve after the
   timeout means nobody answered yet and the late arrival is likely.
-- The subscription outlives the backstop, which is what makes rule 3
-  implementable: events keep arriving through `onevent` → `upsertMatch` into
-  `matchesMap`, so an Unresolved view that keeps reading the store resolves for
-  free when the event lands.
+- The subscription outlives the backstop, which is what makes rule 3 work:
+  events keep arriving through `onevent` → `upsertMatch` into `matchesMap`, so
+  an Unresolved view that keeps reading the store resolves for free when the
+  event lands. `src/routes/+page.svelte` re-derives `linkedMatch` from the store
+  rather than snapshotting it, for exactly that reason.
 
-The current copy does not yet split these. `match.notFoundBody` reads *"This
-match may not exist or hasn't been loaded yet"* — one string hedging across both
-Pending and Unresolved, which is exactly the ambiguity the three-state model is
-meant to remove. Implementing match links means replacing it with two distinct
-messages.
+**The copy is a first-class part of this, and the build order originally missed
+half of it.** §6.3 asked only for Pending and Unresolved strings — because
+`match.notFoundBody` (*"This match may not exist or hasn't been loaded yet"*) was
+one string hedging across those two, and splitting it was the visible task.
+Broken had no copy at all, which §1 forbids in principle and nothing caught in
+practice. The four states now map to keys one for one:
 
-### 3.3 Open question: redirect or render in place
+| State | Title | Body |
+|---|---|---|
+| Pending | `match.pendingTitle` | `match.pendingBody` |
+| Unresolved | `match.notFoundTitle` | `match.expiredBody` |
+| Broken | `match.brokenTitle` | `match.brokenBody` |
 
-Not decided here. Whoever implements this has to answer it.
+`match.notFoundBody` is gone. `MatchView.svelte` maps a `MissingReason` to these
+keys, so adding a state without adding its words does not compile — which is the
+property that was missing.
 
-**Redirect internally** — `?npub=…&match=…` sets the pubkey, then navigates to
-`/match/<id>`.
+**Broken's copy is normative in the same way the states are.** It must say the
+*link* is unreadable and ask for a fresh one; it must not mention expiry, ending,
+or the 24-hour window. The app reuses its existing broken-link screen rather than
+translating these strings, which is fine — what has to match is the statement,
+not the wording. A recipient told "this may have ended" about a URL that was
+mangled in transit will go and ask the sender about a match that is still
+running.
 
-- One renderer, one URL shape for a match view, no duplicated board markup.
-- The pending state has to live *before* the navigation or *inside* the route,
-  and the route currently has no concept of "still waiting".
-- The address bar ends up somewhere the user cannot re-share (see §4 on
-  stripping).
+### 3.3 Decision: render in place, never redirect
 
-**Render in place** — the root page swaps to the match view when `match` is set.
+**A shared match link resolves on the root page.** `src/routes/+page.svelte`
+swaps its whole viewport for `MatchView` when `match` is set. It does not
+navigate to `/match/<id>`.
 
-- The pending state is natural: the root page already owns loading.
-- Two code paths render a match unless the view is extracted into a component.
+This was carried as an open question for one draft too long. It was not open:
+§4's strip-timing rules already answered it, and writing the implementation is
+what made that obvious.
+
+**A redirect is a strip by another name, and a worse one.** §4 says nothing is
+stripped until resolution completes, and that a refresh while Pending re-applies
+the whole link. Navigating to `/match/abcd` breaks both at once. The id survives
+in the path; the organizer does not. So a refresh from there is a **cold visit**
+— a route with nothing subscribed, which §3.1 shows answers immediately with its
+not-found branch — and the recipient gets an instant dead end for a match that
+was on its way to them. It also leaves nobody with anything to forward: the URL
+that named the match is gone from the address bar the moment it resolves.
+
+Rendering in place costs one thing: two callers for the match view. That was
+paid by extracting `src/components/MatchView.svelte` out of the match route, so
+one renderer serves both paths — the route a viewer reaches from the board, and
+the root page holding a link. No markup is duplicated, and the extraction is why
+the route's file is now thirty lines.
+
+The component keeps the difference the two callers actually have, which is how a
+viewer leaves. The route hands them a link to `/`; the root page cannot, because
+the shared match view *is* `/` and an anchor there navigates nowhere. So the root
+page passes an `onExit` callback instead and the board stays one deliberate tap
+away. Never a silent substitution (rule 4 of §3.2).
+
+Two smaller consequences worth naming, since neither is obvious from the
+component:
+
+- The link is read at component setup and not in `onMount`, because it decides
+  what to render on the **first paint**. A match link that showed the board for
+  a frame before swapping would be the silent substitution the design refuses,
+  briefly.
+- `src/routes/+layout.svelte` drops its header and footer for the broadcast
+  view, and knew the match view by its route id. A shared link is not a route,
+  so `sharedMatchView` (`src/lib/stores.ts`) is how the root page says the same
+  thing.
 
 The static SPA setup (`+layout.ts`: `ssr = false`, `prerender = true`;
-`adapter-static` with `fallback: '404.html'`) supports either — a deep path is
-served the fallback shell and routed client-side.
+`adapter-static` with `fallback: '404.html'`) would have supported either — a
+deep path is served the fallback shell and routed client-side. It is not what
+decided this.
 
 ## 4. Stripping, and a trap
 
-`stripSharedPubkeyFromUrl` deletes only `SHARE_PUBKEY_PARAM`. A `match=`
-parameter left in the address bar after the pubkey has been stripped produces
-exactly the broken link of §1: a match id with no author. Whatever strips must
-strip both, or neither.
+A `match=` parameter left in the address bar after the pubkey has been stripped
+produces exactly the broken link of §1: a match id with no author. Whatever
+strips must strip both, or neither.
 
-This is not hypothetical: it is already happening on every cached bundle in the
-wild (§1.2), and it is the reason the strip fix is step 1 of §6.3 rather than a
-tidy-up at the end.
+This was not hypothetical — it was happening on every bundle that predated the
+fix (§1.2), which is why it was step 1 of §6.3 rather than a tidy-up at the end.
+`stripSharedLinkFromUrl` (`src/lib/share-link.ts`) is what does it now, and it is
+named for what it removes: the old `stripSharedPubkeyFromUrl` would have been a
+lie about its own behaviour.
 
 **When** to strip is as normative as **what**:
 
@@ -359,10 +459,15 @@ tidy-up at the end.
   the wanted behaviour: the viewer gets another attempt at the thing they were
   sent, not a board they did not ask for.
 
-This also interacts with the routing question in §3.3 — if the implementation
-redirects to `/match/<id>`, the shareable URL is gone from the address bar the
-moment the link resolves, and a recipient who wants to forward it has nothing to
-copy.
+These three rules are also what settled §3.3. A redirect to `/match/<id>` cannot
+honour any of them: it moves the organizer out of the URL before resolution has
+completed, splits the pair that must travel together, and turns a refresh while
+Pending into a cold visit. The routing choice was never independent of this
+section.
+
+A Broken link is already resolved, in the sense that matters here: there was
+never anything to wait for, so it strips immediately like any other completed
+state.
 
 ## 5. Lifetime of a match link
 
@@ -380,21 +485,25 @@ match in one and an expired notice in the other; that reads as one of the two
 being broken, and neither is.
 
 Each repo owes a test pinning its own constant to `86400`, so a silent drift
-fails a build rather than surfacing as a support question months later.
-**Neither repo has that test today.** Nothing under `src/` here asserts
-`MATCH_MAX_AGE_SECONDS === 86400`, and the Choke app's tests reference
-`scoreboardMaxAgeSeconds` relatively without ever pinning its value — so at
-present the only thing holding the two numbers together is this paragraph and
-its counterpart in the spec. It is a one-line addition owed on each side,
-independently; neither is waiting on the other. Ours belongs with the match-link
-work (§7).
+fails a build rather than surfacing as a support question months later. **This
+repo has its half**: `src/lib/constants.test.ts` asserts
+`MATCH_MAX_AGE_SECONDS === 86400`, and pins `MATCH_LINK_BACKSTOP_MS` to
+`10_000` beside it for the same reason — the backstop of §3.2 is normative too.
+
+At time of writing the app's half is not merged. Its tests reference
+`scoreboardMaxAgeSeconds` relatively without pinning its value; the assertion is
+going in with that repo's step-3 work. The two additions were always
+independent — neither side was waiting on the other — so until it lands, the
+number is held here by a test and there by this paragraph's counterpart in the
+spec.
 
 Twenty-four hours is enforced twice on this side:
 
 - `subscribeToMatches` sets `since = now - MATCH_MAX_AGE_SECONDS` on the filter
   and re-checks client-side, because relays may ignore `since`;
-- `isMatchFresh` (`src/lib/stores.ts`) gates the match route itself, on a ticking
-  clock, so a match open on screen expires where it stands.
+- `isMatchFresh` (`src/lib/stores.ts`), applied inside `findMatchByOrganizer`,
+  gates both the match route and a shared link, on a ticking clock, so a match
+  open on screen expires where it stands.
 
 Two enforcements is a *stricter* reading than the app's single check, and that is
 allowed — what conformance requires is an identical boundary, not an identical
@@ -419,10 +528,10 @@ time ago**, not merely that it does not exist. A recipient opening yesterday's
 link deserves to understand that the link was fine and the window closed —
 otherwise it reads as the site being broken, and they blame the sender.
 
-The match route already treats this dead end as the warmest visitor the app gets
-and answers it with an install pitch (`cta.deadEndPitch`). That framing survives
-match links unchanged; only the wording of *why* the match is gone has to become
-specific.
+`MatchView` treats this dead end as the warmest visitor the app gets and answers
+it with an install pitch (`cta.deadEndPitch`). That framing survived match links
+unchanged; only the wording of *why* the match is gone became specific, in
+`match.expiredBody`.
 
 Revisiting the 24-hour window is a deliberate follow-up, not a bug report.
 
@@ -433,11 +542,11 @@ Revisiting the 24-hour window is a deliberate follow-up, not a bug report.
 This work does not start from nothing. It builds on top of:
 
 - **The expired-match dead end** (`ab8f81e`, PR #33). The not-found branch of
-  `src/routes/match/[id]/+page.svelte` already answers a match that aged out
-  with an install pitch (`cta.deadEndPitch`) and a Play Store button
-  (`cta.install`, `PLAY_STORE_URL`), with `match.backToScoreboard` demoted
-  underneath. That page is the *existing* Unresolved state; §3.2 splits its copy
-  rather than building a new screen.
+  the match view already answered a match that aged out with an install pitch
+  (`cta.deadEndPitch`) and a Play Store button (`cta.install`,
+  `PLAY_STORE_URL`), with `match.backToScoreboard` demoted underneath. That
+  branch was the *existing* Unresolved state; §3.2 split its copy rather than
+  building a new screen, and it now lives in `MatchView.svelte` (§3.3).
 - **The board-wall credit** (`7028a82`, PR #32): `cta.scoredWith` and
   `cta.getTheApp`, on the wall board and in the footer. This is why a resolved
   match link needs no invitation of its own — the wall already carries one.
@@ -466,20 +575,24 @@ ordering the work.
 
 So: parse first, resolve second, offer third.
 
-This repo's reader should land alongside steps 1–2 of the app's sequence — its
-URL parsing and its link handling — and before any share affordance ships in
-either repo.
+The ordering held. This repo's reader landed alongside the app's step 1 — its
+URL parsing — and no share affordance has shipped in either repo. The remaining
+gap is the app's own resolution work; until that lands, a link opened on a phone
+with the app installed reaches the board, which §1.2 makes correct if degraded.
 
 ### 6.3 Sequence for this repo
 
+All three steps have landed (PR #36). Kept here because the *reasons* for the
+order outlive the order.
+
 | # | Step | Notes |
 |---|---|---|
-| 1 | Read `match=` out of the query string in `src/lib/share-link.ts`, and fix `stripSharedPubkeyFromUrl` to strip both params together or neither | Pure functions, no UI, no routing. The strip fix belongs here and not later: a resolved match link otherwise strands `?match=abcd` in the address bar, which is precisely the broken form §1 defines (§4). Extend `src/lib/share-link.test.ts`. |
-| 2 | Route and resolve: settle redirect-to-`/match/[id]` vs render-in-place (§3.3), then implement Pending / Resolved / Unresolved (§3.2), keying the lookup by (organizer, matchId) (§3.1) and deferring the strip until resolution completes (§4) | The hard part, and the only step with real design left in it. §3.3 is a genuine open question, not a formality. |
-| 3 | Split `match.notFoundBody` into distinct Pending and Unresolved strings in `src/lib/i18n/en.ts`, `es.ts` and `pt.ts` | One string currently hedges across both states — *"may not exist or hasn't been loaded yet"* — which is the exact ambiguity §3.2 exists to remove. All three catalogs, or it does not compile (§7). |
+| 1 | Read `match=` out of the query string in `src/lib/share-link.ts`, and make the strip remove both params together or neither | Pure functions, no UI, no routing. The strip fix belonged here and not later: a resolved match link otherwise strands `?match=abcd` in the address bar, which is precisely the broken form §1 defines (§4). Landed as `readSharedMatchId` / `readSharedMatchLink` / `stripSharedLinkFromUrl`, with `src/lib/share-link.test.ts` extended. |
+| 2 | Route and resolve: settle redirect-to-`/match/[id]` vs render-in-place (§3.3), then implement Pending / Resolved / Unresolved / Broken (§3.2), keying the lookup by (organizer, matchId) (§3.1) and deferring the strip until resolution completes (§4) | The hard part. §3.3 turned out to be answered by §4 rather than genuinely open, and EOSE needed its own store before rule 1 was implementable at all. |
+| 3 | Replace `match.notFoundBody` with distinct Pending, Unresolved and Broken strings in `src/lib/i18n/en.ts`, `es.ts` and `pt.ts` | One string hedged across the states — *"may not exist or hasn't been loaded yet"* — which is the exact ambiguity §3.2 exists to remove. **This step originally asked for two states and needed three**: Broken was mandated by §1 and never given words. All three catalogs, or it does not compile (§7). |
 
-Step 1 is separable and can merge on its own; it changes no behaviour a viewer
-can see.
+Step 1 was separable and could have merged on its own; it changed no behaviour a
+viewer could see.
 
 **A share affordance on the web is not in scope.** The app is where sharing
 happens — it is the device holding the match. This repo's job here is purely to
@@ -502,10 +615,22 @@ tests round-trip, not a button.
   non-hex characters to be *rejected*, not quietly passed through. That file is
   what stops this repo and the Choke app from drifting apart.
 - **Cover the collision.** Two different authors publishing the same match id is
-  the case the (organizer, matchId) lookup key exists for (§3.1). It has no
-  coverage today because nothing yet resolves a match by author; it is owed with
-  the change that does.
-- **Pin the window.** Add an assertion that `MATCH_MAX_AGE_SECONDS` is `86400`
-  (§5). It looks like a test of a literal against itself; it is not. It is this
-  repo's half of a cross-repo agreement, and its only job is to fail the build
-  when someone changes the window here without changing it there.
+  the case the (organizer, matchId) lookup key exists for (§3.1). Covered in
+  `src/lib/stores.test.ts` and `src/routes/page.test.ts`, including the case
+  that matters most: a colliding stranger's event must leave the link **Pending**,
+  not resolve it and not expire it.
+- **Pin the window.** `src/lib/constants.test.ts` asserts
+  `MATCH_MAX_AGE_SECONDS === 86400` (§5). It looks like a test of a literal
+  against itself; it is not. It is this repo's half of a cross-repo agreement,
+  and its only job is to fail the build when someone changes the window here
+  without changing it there.
+- **A trap in the test fixtures.** In `src/lib/share-link.test.ts` the `HEX`
+  constant is **not** the decoding of the `NPUB` beside it. Nothing in that file
+  decodes anything — it tests the query contract, where both values are just
+  opaque strings that either survive a round-trip or do not — so the mismatch is
+  harmless where it sits and completely silent. It stops being harmless the
+  moment a test in that file starts matching authors, because the npub would
+  decode to a key the fixture never mentions and the failure would read as a bug
+  in the lookup. The real correspondence is pinned in `src/routes/page.test.ts`,
+  where `HEX` **is** what `NPUB` decodes to and is commented as such. Take the
+  pair from there.
