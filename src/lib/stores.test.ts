@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	ALL_MATCH_STATUSES,
 	DEFAULT_STATUS_FILTER,
+	findMatchByOrganizer,
 	getSortedMatches
 } from './stores.js';
 import type { MatchEvent, MatchStatus } from './types.js';
@@ -146,5 +147,72 @@ describe('getSortedMatches with a status filter', () => {
 
 		// Assert — freshness and status filter both apply
 		expect(result.map((m) => m.id)).toEqual(['live']);
+	});
+});
+
+/**
+ * The lookup key is (organizer, matchId), never matchId alone.
+ *
+ * A match id is four hex characters generated at random with no collision
+ * check — 16 bits — so it is only unique inside one author's events. Two
+ * organizers at the same tournament CAN publish the same id, and `matchesMap`
+ * is keyed by id alone, which is safe only while the board subscribes to
+ * exactly one author at a time. A shared link makes the author part of what the
+ * URL names, so it has to be compared rather than assumed.
+ */
+describe('finding the one match an organizer and an id name together', () => {
+	const ALICE = 'a'.repeat(64);
+	const BOB = 'b'.repeat(64);
+
+	it('returns the match when the author is the one the link named', () => {
+		// Arrange
+		const map = mapOf(match({ id: 'abcd', pubkey: ALICE, created_at: NOW }));
+
+		// Act
+		const found = findMatchByOrganizer(map, ALICE, 'abcd', NOW);
+
+		// Assert
+		expect(found?.pubkey).toBe(ALICE);
+	});
+
+	it('refuses the same id published by somebody else', () => {
+		// Arrange — Bob's match happens to have collided with the id Alice shared
+		const map = mapOf(match({ id: 'abcd', pubkey: BOB, f1_name: 'Stranger', created_at: NOW }));
+
+		// Act
+		const found = findMatchByOrganizer(map, ALICE, 'abcd', NOW);
+
+		// Assert — showing it would put one organizer's fight in front of
+		// another organizer's guests
+		expect(found).toBeUndefined();
+	});
+
+	it('does not let a stranger’s aged-out match expire this link', () => {
+		// Arrange — Bob's collided match is old; Alice's has not been seen yet
+		const map = mapOf(match({ id: 'abcd', pubkey: BOB, created_at: NOW - 90_000 }));
+
+		// Act / Assert — undefined because it is not ours, which is the same
+		// answer as "not here yet" and deliberately NOT "this one expired"
+		expect(findMatchByOrganizer(map, ALICE, 'abcd', NOW)).toBeUndefined();
+	});
+
+	it('applies the age window to the organizer’s own match', () => {
+		const map = mapOf(match({ id: 'abcd', pubkey: ALICE, created_at: NOW - 90_000 }));
+
+		expect(findMatchByOrganizer(map, ALICE, 'abcd', NOW)).toBeUndefined();
+	});
+
+	it('returns nothing when the id is not in the feed at all', () => {
+		const map = mapOf(match({ id: 'ffff', pubkey: ALICE, created_at: NOW }));
+
+		expect(findMatchByOrganizer(map, ALICE, 'abcd', NOW)).toBeUndefined();
+	});
+
+	it('refuses to look anything up without an organizer', () => {
+		// An id alone names nothing. Falling back to id-only matching here is
+		// exactly the bug the key exists to prevent.
+		const map = mapOf(match({ id: 'abcd', pubkey: ALICE, created_at: NOW }));
+
+		expect(findMatchByOrganizer(map, '', 'abcd', NOW)).toBeUndefined();
 	});
 });

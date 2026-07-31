@@ -1,8 +1,8 @@
 import { SimplePool } from 'nostr-tools/pool';
 import { nip19 } from 'nostr-tools';
 import type { DqReason, MatchEvent, MatchMethod, MatchStatus, MatchWinner } from './types.js';
-import { upsertMatch, isLoading } from './stores.js';
-import { MATCH_MAX_AGE_SECONDS } from './constants.js';
+import { upsertMatch, isLoading, relaysSettled } from './stores.js';
+import { MATCH_LINK_BACKSTOP_MS, MATCH_MAX_AGE_SECONDS } from './constants.js';
 import type { SubCloser } from 'nostr-tools/abstract-pool';
 
 /** BJJ Match event kind (parameterized replaceable) */
@@ -269,6 +269,12 @@ export function subscribeToMatches(
 	// A reconnect must not blank out the matches already on screen behind a spinner.
 	if (showLoading) isLoading.set(true);
 
+	// Whatever the relays had told us, they have not told us yet on THIS
+	// subscription. Reset unconditionally, including on a watchdog rebuild: a
+	// stale `true` would let a match link conclude the relays had answered when
+	// the socket it heard that from is gone.
+	relaysSettled.set(false);
+
 	const since = Math.floor(Date.now() / 1000) - MATCH_MAX_AGE_SECONDS;
 
 	const sub = pool.subscribeMany(
@@ -290,6 +296,15 @@ export function subscribeToMatches(
 				}
 			},
 			oneose() {
+				// Two stores, one event, and they are not the same statement.
+				//
+				// `isLoading` means "stop showing a spinner", which the timeout below
+				// also means. `relaysSettled` means "the relays have said that was
+				// everything they had stored" — NIP-01's EOSE and nothing else — and
+				// the timeout must NOT set it, because a caller that cannot tell the
+				// two apart cannot tell "they do not have it" from "nobody answered
+				// yet". A shared match link needs exactly that distinction.
+				relaysSettled.set(true);
 				isLoading.set(false);
 			}
 		}
@@ -298,10 +313,11 @@ export function subscribeToMatches(
 	activeSubCloser = sub;
 	startWatchdog();
 
-	// Set loading to false after timeout in case EOSE never fires
+	// Set loading to false after timeout in case EOSE never fires. Deliberately
+	// leaves `relaysSettled` alone — see oneose above.
 	setTimeout(() => {
 		isLoading.set(false);
-	}, 10000);
+	}, MATCH_LINK_BACKSTOP_MS);
 }
 
 /**
@@ -310,6 +326,7 @@ export function subscribeToMatches(
 export function closeSubscription(): void {
 	stopWatchdog();
 	currentPubkey = '';
+	relaysSettled.set(false);
 
 	if (activeSubCloser) {
 		activeSubCloser.close();
