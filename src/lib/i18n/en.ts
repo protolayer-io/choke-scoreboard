@@ -50,6 +50,19 @@ export const en = {
 	// is a shrug: this has to name the destination.
 	'cta.getTheApp': 'Get Choke Scoreboard on Google Play',
 
+	// The same invitation, made at the dead end: a match that aged out, reached by
+	// someone who followed a shared link to watch it. They are the warmest visitor
+	// this app ever gets — they arrived wanting exactly this — and the page has
+	// nothing to show them. So it stops apologising and makes an offer.
+	//
+	// It names the shared link on purpose. "Score your own matches" is a slogan;
+	// being the one who sends the link is what just happened to them, from the
+	// other side, and what they could do at their own gym this weekend.
+	'cta.deadEndPitch': 'Run your own live scoreboard — and be the one sharing the link.',
+	// The button. Short, because the sentence above it already made the case, and
+	// because `cta.getTheApp` is what a screen reader reads here instead.
+	'cta.install': 'Get the app',
+
 	// ─── Connecting to an organizer ─────────────────────────────────────────
 	'pubkey.placeholder': 'Enter organizer npub or hex pubkey...',
 	'pubkey.load': 'Load',

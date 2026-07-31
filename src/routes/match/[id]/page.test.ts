@@ -92,6 +92,21 @@ function render(over: Partial<MatchEvent> = {}) {
 	return () => target.innerHTML;
 }
 
+/**
+ * Mount the page for a match that is not there.
+ *
+ * This is what a shared link turns into: matches age out after a day, and the
+ * link outlives them in the chat thread it was pasted into. The store is left
+ * empty on purpose — the page cannot tell "expired" from "never existed" from
+ * "not loaded yet", and shows the same dead end for all three.
+ */
+function renderMissing() {
+	matchesMap.set(new Map());
+	component = mount(BoardPage, { target, props: {} });
+	flushSync();
+	return () => target.innerHTML;
+}
+
 beforeEach(() => {
 	target = document.createElement('div');
 	document.body.appendChild(target);
@@ -202,6 +217,73 @@ describe('the invitation to get the app', () => {
 		// "bjjscore.live — get the app" out of context is a domain and a shrug;
 		// the accessible name has to say where the link goes.
 		const html = render();
+
+		expect(html()).toContain(`aria-label="${translate()('cta.getTheApp')}"`);
+	});
+});
+
+/**
+ * The dead end, which is the best moment the app gets.
+ *
+ * Somebody followed a link a friend shared, to a match that aged out — they
+ * came here on purpose, wanting to watch this. Every other page has to earn
+ * attention; this one already has it, and until now spent it on a shrug emoji
+ * and a link back to a scoreboard belonging to someone else.
+ *
+ * It is also the ONLY page in the app with no footer to fall back on: this
+ * route renders under the broadcast layout, which draws neither header nor
+ * footer. Whatever is missing here is missing entirely.
+ */
+describe('the dead end a shared link becomes', () => {
+	it('invites whoever followed the link to get the app', () => {
+		// Arrange / Act — a link to a match that is gone
+		const html = renderMissing();
+
+		// Assert — the pitch, and somewhere to act on it
+		expect(html()).toContain(translate()('cta.deadEndPitch'));
+		expect(html()).toContain(`href="${PLAY_STORE_URL}"`);
+		expect(html()).toContain(translate()('cta.install'));
+	});
+
+	it('still says the match is not there', () => {
+		// The invitation is an addition, not a replacement: a person who came for
+		// a specific match is owed the reason they are not watching it.
+		const html = renderMissing();
+
+		expect(html()).toContain(translate()('match.notFoundTitle'));
+		expect(html()).toContain(translate()('match.backToScoreboard'));
+	});
+
+	it('speaks the language of whoever followed the link', () => {
+		// Arrange — the page as it first painted
+		const html = renderMissing();
+		const english = translate()('cta.deadEndPitch');
+
+		// Act — the reader's browser asked for Spanish
+		locale.set('es');
+		flushSync();
+
+		// Assert
+		const spanish = translate()('cta.deadEndPitch');
+		expect(spanish).not.toBe(english);
+		expect(html()).toContain(spanish);
+		expect(html()).not.toContain(english);
+	});
+
+	it('opens the store in a new tab, without handing the opener over', () => {
+		// Asked of the ELEMENT and not of the markup: Svelte is free to order the
+		// attributes however it likes, and a test that reads them positionally out
+		// of the HTML string fails on a compiler upgrade rather than on a bug.
+		renderMissing();
+		const store = target.querySelector<HTMLAnchorElement>(`a[href="${PLAY_STORE_URL}"]`);
+
+		expect(store).not.toBeNull();
+		expect(store?.target).toBe('_blank');
+		expect(store?.rel).toBe('noopener noreferrer');
+	});
+
+	it('gives the link a name a screen reader can read on its own', () => {
+		const html = renderMissing();
 
 		expect(html()).toContain(`aria-label="${translate()('cta.getTheApp')}"`);
 	});
