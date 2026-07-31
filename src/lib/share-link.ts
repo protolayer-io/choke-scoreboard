@@ -11,12 +11,12 @@
  */
 
 /**
- * Query params a key may arrive under, in priority order. `npub` is what a
- * person actually shares; `pubkey` is a hex-friendly alias for anything building
- * links programmatically. The value under either may be an npub or a 64-char hex
- * string — decodePubkey() is what sorts that out, so this module stays agnostic.
+ * The one query param a key arrives under. There is deliberately no alias: one
+ * name means nobody has to ask which one is canonical. The value may be an npub
+ * or a 64-char hex string — decodePubkey() is what sorts that out, so this
+ * module stays agnostic about the shape of what it hands back.
  */
-export const SHARE_PUBKEY_PARAMS = ['npub', 'pubkey'] as const;
+export const SHARE_PUBKEY_PARAM = 'npub';
 
 /**
  * The organizer key carried by a query string, or null if none is present.
@@ -26,32 +26,22 @@ export const SHARE_PUBKEY_PARAMS = ['npub', 'pubkey'] as const;
  * error a bad paste would, in the viewer's language.
  */
 export function readSharedPubkey(search: string): string | null {
-	const params = new URLSearchParams(search);
-	for (const key of SHARE_PUBKEY_PARAMS) {
-		const value = params.get(key)?.trim();
-		if (value) return value;
-	}
-	return null;
+	const value = new URLSearchParams(search).get(SHARE_PUBKEY_PARAM)?.trim();
+	return value ? value : null;
 }
 
 /**
- * Remove the share params from the current address bar without a navigation or a
+ * Remove the share param from the current address bar without a navigation or a
  * new history entry. No-op outside the browser (SSR / tests without a DOM).
  */
 export function stripSharedPubkeyFromUrl(): void {
 	if (typeof window === 'undefined') return;
 
 	const url = new URL(window.location.href);
-	let changed = false;
-	for (const key of SHARE_PUBKEY_PARAMS) {
-		if (url.searchParams.has(key)) {
-			url.searchParams.delete(key);
-			changed = true;
-		}
-	}
-	if (changed) {
-		history.replaceState(history.state, '', url.pathname + url.search + url.hash);
-	}
+	if (!url.searchParams.has(SHARE_PUBKEY_PARAM)) return;
+
+	url.searchParams.delete(SHARE_PUBKEY_PARAM);
+	history.replaceState(history.state, '', url.pathname + url.search + url.hash);
 }
 
 /**
@@ -61,6 +51,6 @@ export function stripSharedPubkeyFromUrl(): void {
  */
 export function buildShareLink(origin: string, npub: string): string {
 	const url = new URL(origin);
-	url.searchParams.set('npub', npub);
+	url.searchParams.set(SHARE_PUBKEY_PARAM, npub);
 	return url.toString();
 }
