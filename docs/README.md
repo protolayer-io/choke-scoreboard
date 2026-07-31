@@ -8,6 +8,7 @@ Choke Scoreboard is a SvelteKit-based single-page application (SPA) that display
 
 - [Architecture](./architecture.md) — Project structure, Svelte 5 runes, state management
 - [Nostr Protocol](./nostr-protocol.md) — Event kind 31415, relay management, subscriptions
+- [Shared Links](./shared-links.md) — The `?npub=` board link, and the specified `?match=` link to one match
 - [Scoring System](./scoring-system.md) — BJJ point calculation, tiebreakers
 - [Match Lifecycle](./match-lifecycle.md) — State machine, timer behavior
 - [Components](./components.md) — Svelte component documentation
