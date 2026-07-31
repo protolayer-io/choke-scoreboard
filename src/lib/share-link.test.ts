@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildShareLink, readSharedPubkey, SHARE_PUBKEY_PARAMS } from './share-link.js';
+import { buildShareLink, readSharedPubkey, SHARE_PUBKEY_PARAM } from './share-link.js';
 
 /**
  * A shared link is the whole point of the feature: a spectator opens
@@ -18,11 +18,15 @@ describe('readSharedPubkey', () => {
 		expect(readSharedPubkey(`?npub=${NPUB}`)).toBe(NPUB);
 	});
 
-	it('reads a value from the ?pubkey= alias', () => {
-		expect(readSharedPubkey(`?pubkey=${HEX}`)).toBe(HEX);
+	it('reads a 64-char hex key from ?npub= too — decoding is not this job', () => {
+		expect(readSharedPubkey(`?npub=${HEX}`)).toBe(HEX);
 	});
 
-	it('prefers npub over pubkey when both are present', () => {
+	it('ignores ?pubkey=, which is not a share param', () => {
+		expect(readSharedPubkey(`?pubkey=${HEX}`)).toBeNull();
+	});
+
+	it('ignores ?pubkey= even alongside a real npub', () => {
 		expect(readSharedPubkey(`?pubkey=${HEX}&npub=${NPUB}`)).toBe(NPUB);
 	});
 
@@ -51,8 +55,8 @@ describe('buildShareLink', () => {
 		expect(readSharedPubkey(search)).toBe(NPUB);
 	});
 
-	it('uses the primary npub param', () => {
+	it('writes the key under the one share param', () => {
 		const link = buildShareLink('https://bjjscore.live/', NPUB);
-		expect(new URL(link).searchParams.get(SHARE_PUBKEY_PARAMS[0])).toBe(NPUB);
+		expect(new URL(link).searchParams.get(SHARE_PUBKEY_PARAM)).toBe(NPUB);
 	});
 });
