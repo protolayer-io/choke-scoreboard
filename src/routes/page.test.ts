@@ -320,6 +320,13 @@ describe('a link that names nothing', () => {
 		expect(html()).not.toContain(say('match.expiredBody'));
 	});
 
+	it('says the link is broken when the npub cannot be decoded', () => {
+		const html = open('?npub=npub1badchecksum&match=abcd');
+
+		expect(html()).toContain(say('match.brokenBody'));
+		expect(connectToPubkey).not.toHaveBeenCalled();
+	});
+
 	it('never waits for a match nobody can ask about', () => {
 		const html = open(`?npub=${NPUB}&match=zzzz`);
 
