@@ -12,7 +12,7 @@
 		getWinner,
 		isMatchPaused
 	} from '$lib/scoring.js';
-	import { alpha, sanitizeColor } from '$lib/colors.js';
+	import { ON_GREEN_DARKEN, alpha, darken, sanitizeColor } from '$lib/colors.js';
 	import { getBoardPalette, glow, halfWash, tint, type BoardStatus } from '$lib/board-theme.js';
 	import { isFullscreen, toggleFullscreen } from '$lib/fullscreen.js';
 	import { t } from '$lib/i18n/index.js';
@@ -422,6 +422,39 @@
 		<p class="mt-1 text-sm" style="color: var(--text-secondary);">
 			{$t('match.notFoundBody')}
 		</p>
-		<a href="{base}/" class="mt-6 text-sm underline" style="color: var(--color-green-live);">{$t('match.backToScoreboard')}</a>
+
+		<!--
+			The dead end, which is the best moment this app gets.
+
+			Matches age out after a day; the links to them do not, and go on sitting
+			in the chat thread they were pasted into. Whoever follows one afterwards
+			came here on purpose, wanting to watch this exact match — the warmest
+			visitor the app will ever have — and until now the page spent that on a
+			shrug and a link to a scoreboard belonging to somebody else.
+
+			It also has NO footer to fall back on: this route renders under the
+			broadcast layout, which draws neither header nor footer. Whatever the
+			invitation is, it has to be here.
+
+			So this one is loud, unlike the wall's. There is no score for it to pull
+			an eye away from, and the button is the only thing on the page worth
+			doing — `match.backToScoreboard` stays underneath it, demoted to what it
+			always was: the way out for the operator who mistyped a match id.
+		-->
+		<p class="mt-8 max-w-xs text-sm" style="color: var(--text-secondary);">
+			{$t('cta.deadEndPitch')}
+		</p>
+		<a
+			href={PLAY_STORE_URL}
+			target="_blank"
+			rel="noopener noreferrer"
+			aria-label={$t('cta.getTheApp')}
+			class="mt-4 rounded-lg px-5 py-2.5 text-sm font-semibold no-underline transition-opacity hover:opacity-90"
+			style="background: {darken('var(--color-green-live)', ON_GREEN_DARKEN)}; color: #ffffff;"
+		>
+			{$t('cta.install')}
+		</a>
+
+		<a href="{base}/" class="mt-6 text-sm underline" style="color: var(--text-secondary);">{$t('match.backToScoreboard')}</a>
 	</div>
 {/if}

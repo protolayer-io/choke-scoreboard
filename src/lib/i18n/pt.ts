@@ -29,6 +29,8 @@ export const pt = defineCatalog({
 	// ─── O convite para baixar o app ────────────────────────────────────────
 	'cta.scoredWith': (brand: string) => `Placar ao vivo por ${brand} — baixe o app`,
 	'cta.getTheApp': 'Baixe o Choke Scoreboard no Google Play',
+	'cta.deadEndPitch': 'Monte o seu próprio placar ao vivo — e seja você quem compartilha o link.',
+	'cta.install': 'Baixar o app',
 
 	// ─── Conexão com o organizador ──────────────────────────────────────────
 	'pubkey.placeholder': 'Digite a npub ou chave pública hex do organizador...',
