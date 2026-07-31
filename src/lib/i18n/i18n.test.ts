@@ -298,6 +298,22 @@ describe('inviting the room to get the app', () => {
 		for (const name of names) expect(name.trim().length).toBeGreaterThan(0);
 		expect(new Set(names).size).toBe(LOCALES.length);
 	});
+
+	it('has something to say at the dead end, in every language', () => {
+		// The expired-match page is the one place a stranger arrives already
+		// wanting this — and the one page with no footer to carry the usual line,
+		// so it has its own pitch and its own button. Both in three languages, or
+		// the best moment the app gets happens in English at a Brazilian gym.
+		for (const key of ['cta.deadEndPitch', 'cta.install'] as const) {
+			const said = LOCALES.map((code) => {
+				locale.set(code);
+				return get(t)(key);
+			});
+
+			for (const line of said) expect(line.trim().length).toBeGreaterThan(0);
+			expect(new Set(said).size).toBe(LOCALES.length);
+		}
+	});
 });
 
 /**

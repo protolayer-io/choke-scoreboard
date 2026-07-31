@@ -64,6 +64,29 @@ export type Rgb = [number, number, number];
 
 export const BLACK: Rgb = [0, 0, 0];
 
+export const WHITE: Rgb = [255, 255, 255];
+
+/**
+ * The brand green, mirrored here from `--color-green-live` in app.css.
+ *
+ * Duplicated on purpose: the stylesheet is where the browser reads it, and this
+ * is the only place it can be MEASURED. A custom property cannot be resolved in
+ * a test, so a green that exists only as a `var()` is a color nobody can prove
+ * is readable.
+ */
+export const GREEN_LIVE: Rgb = [27, 163, 78];
+
+/**
+ * How much black the brand green needs behind white text.
+ *
+ * At full strength it is a highlighter: right as a chip, a border, a dot beside
+ * the word LIVE — and about 3.3:1 against white, under the 4.5 body-sized text
+ * on a solid button needs. Mixing black in clears the bar while staying the
+ * same green from across a room. The number is kept honest by a test in
+ * colors.test.ts, not by this comment.
+ */
+export const ON_GREEN_DARKEN = 0.2;
+
 /**
  * The channels of a color, or null when this notation cannot be measured here.
  *

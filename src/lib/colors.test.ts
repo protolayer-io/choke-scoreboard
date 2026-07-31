@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	BLACK,
+	GREEN_LIVE,
+	ON_GREEN_DARKEN,
+	WHITE,
 	alpha,
 	contrastRatio,
 	darken,
@@ -104,6 +108,48 @@ describe('mixOver', () => {
 	it('clamps an out-of-range amount', () => {
 		expect(mixOver([0, 0, 0], [200, 100, 50], 2)).toEqual([0, 0, 0]);
 		expect(mixOver([0, 0, 0], [200, 100, 50], -1)).toEqual([200, 100, 50]);
+	});
+});
+
+/**
+ * The one green button in the app, measured.
+ *
+ * The expired-match page ends in a solid green button with white text on it —
+ * the only place the brand green is a BACKGROUND for words rather than a chip
+ * or a border. At full strength it is a highlighter, and white on it sits
+ * around 3.3:1: a bright button that fails anyone reading a phone at arm's
+ * length in a gym under a skylight.
+ *
+ * `ON_GREEN_DARKEN` is what fixes that, and a constant with a comment is not a
+ * guarantee — somebody will one day decide the button looks nicer brighter.
+ * This is what stops that from shipping.
+ */
+describe('white on the brand green', () => {
+	it('clears WCAG AA once it is taken down by ON_GREEN_DARKEN', () => {
+		// Arrange — the same arithmetic the browser does for
+		// color-mix(in srgb, var(--color-green-live) 80%, black)
+		const button = mixOver(GREEN_LIVE, BLACK, 1 - ON_GREEN_DARKEN);
+
+		// Act
+		const ratio = contrastRatio(button, WHITE);
+
+		// Assert — 4.5 is the AA bar for text this size
+		expect(ratio).toBeGreaterThanOrEqual(4.5);
+	});
+
+	it('is the brand green that needed taking down in the first place', () => {
+		// If this stops being true the constant has become a superstition: either
+		// the palette moved, or somebody is darkening for no reason.
+		expect(contrastRatio(GREEN_LIVE, WHITE)).toBeLessThan(4.5);
+	});
+
+	it('stays green, and does not quietly become black', () => {
+		// The button has to read as the app's own color from across a gym, so this
+		// pins the other end: a darken that solved contrast by going nearly black
+		// would pass the test above and lose the brand.
+		const button = mixOver(GREEN_LIVE, BLACK, 1 - ON_GREEN_DARKEN);
+
+		expect(contrastRatio(button, BLACK)).toBeGreaterThan(2);
 	});
 });
 
