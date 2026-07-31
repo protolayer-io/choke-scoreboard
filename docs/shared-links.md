@@ -224,10 +224,14 @@ spec:
 
 1. **The settled signal is NIP-01's `EOSE`.** It is the relay saying "that was
    everything I had stored"; nothing else means the same thing.
-2. **The backstop is 8 seconds after the link opens.** If no `EOSE` and no
+2. **The backstop is 10 seconds after the link opens.** If no `EOSE` and no
    matching event has arrived by then, Pending ends. Both readers use this same
    number, so two people opening the same link on different platforms wait the
-   same length of time and reach the same screen.
+   same length of time and reach the same screen. Ten is not arbitrary: this repo
+   already waits exactly that long before giving up on EOSE
+   (`src/lib/nostr.ts:302`), and inventing a second timeout a couple of seconds
+   away from an existing one buys nothing while leaving two magic numbers where
+   there was one.
 3. **A late arrival still wins.** If the event turns up after the move to
    Unresolved — a slow relay, a reconnect — resolve to it and show the match.
    Unresolved states what is known so far; it is not a terminal state and must
@@ -237,24 +241,28 @@ spec:
    it worked is a lie they cannot catch. The board stays one deliberate tap away,
    never a silent substitution.
 
-**What this repo actually surfaces today.** `subscribeToMatches` in
-`src/lib/nostr.ts` *does* receive EOSE — it passes an `oneose` handler to
-`SimplePool.subscribeMany` — but it does not surface it. `oneose` only sets
-`isLoading` to `false`, and the same store is set to `false` by an unconditional
-10-second `setTimeout` in the same function. A caller watching `isLoading`
-therefore cannot tell "the relays answered" from "ten seconds elapsed", and gets
-whichever happened first. That is enough for a spinner over a list and is *not*
-enough for rule 1, which needs the two apart. Note the asymmetry with the Choke
-app, whose `NostrRelayBackend` does not expose EOSE at all: this repo has the
-signal in hand and merely discards it, so satisfying rule 1 here is plumbing —
-surfacing the existing `oneose` — while over there it is new capability.
+**Rule 1 needs work in both readers, but not the same work.** In the Choke app,
+`NostrRelayBackend` exposes only `Stream<NostrEvent> get events` — end-of-stored-
+events is never carried across that boundary, so the signal does not reach Dart
+at all and has to be plumbed through before anything can wait on it. Here the
+signal already arrives: `subscribeToMatches` in `src/lib/nostr.ts` passes an
+`oneose` handler to `SimplePool.subscribeMany` (`src/lib/nostr.ts:292`). What it
+does with it is the problem — `oneose` only clears the shared `isLoading` store,
+which the 10-second `setTimeout` at `src/lib/nostr.ts:302` also clears. A caller
+watching `isLoading` cannot tell "the relays answered" from "ten seconds passed",
+and gets whichever happened first. That is enough for a spinner over a list and
+not enough for rule 1. So: over there, new capability; here, an existing signal
+that needs its own channel instead of being folded into a boolean.
 
 Two further traps in that same code, for whoever implements step 2 of §6.3:
 
-- The 8-second backstop of rule 2 is **not** the existing 10-second timeout, and
-  must not be built on top of it. Reusing `isLoading` would make Pending end at
-  10 seconds on a silent relay, breaking the cross-repo equality that makes the
-  number worth fixing at all. The match view owns its own 8-second timer.
+- **Matching the number is not the same as reusing the store.** The backstop of
+  rule 2 is now the same ten seconds `subscribeToMatches` already uses, which is
+  the point — but the match view still owns its own timer. Deriving Pending from
+  `isLoading` would make it end on whichever of EOSE-or-timeout fired first with
+  no way to know which, and rule 3 needs that distinction: a resolve after EOSE
+  means the relays genuinely do not have the event, while a resolve after the
+  timeout means nobody answered yet and the late arrival is likely.
 - The subscription outlives the backstop, which is what makes rule 3
   implementable: events keep arriving through `onevent` → `upsertMatch` into
   `matchesMap`, so an Unresolved view that keeps reading the store resolves for
@@ -319,12 +327,15 @@ recipient who opens a link on the web and then on their phone must not see the
 match in one and an expired notice in the other; that reads as one of the two
 being broken, and neither is.
 
-Each repo pins its own constant in its own test suite, so a silent drift fails a
-build rather than surfacing as a support question months later. **This repo does
-not have that test yet** — nothing under `src/` asserts
-`MATCH_MAX_AGE_SECONDS === 86400`, so today the only thing holding the two
-values together is this paragraph. Adding it belongs with the match-link work
-(§7).
+Each repo owes a test pinning its own constant to `86400`, so a silent drift
+fails a build rather than surfacing as a support question months later.
+**Neither repo has that test today.** Nothing under `src/` here asserts
+`MATCH_MAX_AGE_SECONDS === 86400`, and the Choke app's tests reference
+`scoreboardMaxAgeSeconds` relatively without ever pinning its value — so at
+present the only thing holding the two numbers together is this paragraph and
+its counterpart in the spec. It is a one-line addition owed on each side,
+independently; neither is waiting on the other. Ours belongs with the match-link
+work (§7).
 
 Twenty-four hours is enforced twice on this side:
 
