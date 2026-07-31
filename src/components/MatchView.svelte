@@ -483,7 +483,7 @@
 			that really are a dead end.
 		-->
 	<div role="status" aria-live="polite" class="flex flex-col items-center">
-		{`#if` isPending}
+		{#if isPending}
 			<div
 				aria-hidden="true"
 				class="h-10 w-10 animate-spin rounded-full border-4 border-t-transparent"
