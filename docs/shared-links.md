@@ -1,11 +1,13 @@
 # Shared Links
 
-**Status.** The board link (`?npub=…`) is **built and in production** — see
+**Status: agreed — ready to implement. Nothing described here as new is built
+yet.** The board link (`?npub=…`) is **built and in production** — see
 `src/lib/share-link.ts` and `src/components/PubkeyInput.svelte`. The match link
-(`?npub=…&match=…`) is **specified here and not implemented**: nothing in `src/`
+(`?npub=…&match=…`) is **specified and not implemented**: nothing in `src/`
 reads a `match` parameter today. The companion specification lives in the Choke
 app repository at `docs/specs/shared-match-links.md`, and the URL contract in
-§1 is shared between the two — neither side may extend it alone.
+§1 is shared between the two — neither side may extend it alone. Build order,
+including the cross-repo ordering both documents depend on, is §6.
 
 ## Why links exist at all
 
@@ -248,7 +250,59 @@ specific.
 
 Revisiting the 24-hour window is a deliberate follow-up, not a bug report.
 
-## 6. Implementation notes
+## 6. Build order
+
+### 6.1 Baseline already on `main`
+
+This work does not start from nothing. It builds on top of:
+
+- **The expired-match dead end** (`ab8f81e`, PR #33). The not-found branch of
+  `src/routes/match/[id]/+page.svelte` already answers a match that aged out
+  with an install pitch (`cta.deadEndPitch`) and a Play Store button
+  (`cta.install`, `PLAY_STORE_URL`), with `match.backToScoreboard` demoted
+  underneath. That page is the *existing* Unresolved state; §3.2 splits its copy
+  rather than building a new screen.
+- **The board-wall credit** (`7028a82`, PR #32): `cta.scoredWith` and
+  `cta.getTheApp`, on the wall board and in the footer. This is why a resolved
+  match link needs no invitation of its own — the wall already carries one.
+- `MATCH_MAX_AGE_SECONDS` and `isMatchFresh`, which is what makes a match link
+  expire (§5) instead of needing a lifetime rule invented for it.
+
+### 6.2 Readers land before writers
+
+**This is the ordering constraint that matters.** Both readers — this web board
+and the Flutter app — must understand `match=` *before* anything starts
+producing links that carry it.
+
+A link lives in a chat forever. If a share affordance ships first, every link
+sent during that window degrades to a board link permanently: opened tomorrow or
+next month, by anyone, they still land on a list. The backward compatibility of
+§1.2 makes that degradation **safe**, not **desirable**, and it is avoidable for
+free by ordering the work.
+
+So: parse first, resolve second, offer third.
+
+This repo's reader should land alongside steps 1–2 of the app's sequence — its
+URL parsing and its link handling — and before any share affordance ships in
+either repo.
+
+### 6.3 Sequence for this repo
+
+| # | Step | Notes |
+|---|---|---|
+| 1 | Read `match=` out of the query string in `src/lib/share-link.ts`, and fix `stripSharedPubkeyFromUrl` to strip both params together or neither | Pure functions, no UI, no routing. The strip fix belongs here and not later: a resolved match link otherwise strands `?match=abcd` in the address bar, which is precisely the broken form §1 defines (§4). Extend `src/lib/share-link.test.ts`. |
+| 2 | Route and resolve: settle redirect-to-`/match/[id]` vs render-in-place (§3.3), then implement Pending / Resolved / Unresolved (§3.2) | The hard part, and the only step with real design left in it. §3.3 is a genuine open question, not a formality. |
+| 3 | Split `match.notFoundBody` into distinct Pending and Unresolved strings in `src/lib/i18n/en.ts`, `es.ts` and `pt.ts` | One string currently hedges across both states — *"may not exist or hasn't been loaded yet"* — which is the exact ambiguity §3.2 exists to remove. All three catalogs, or it does not compile (§7). |
+
+Step 1 is separable and can merge on its own; it changes no behaviour a viewer
+can see.
+
+**A share affordance on the web is not in scope.** The app is where sharing
+happens — it is the device holding the match. This repo's job here is purely to
+*receive*. `buildShareLink` stays what §2.1 says it is: a format definition the
+tests round-trip, not a button.
+
+## 7. Implementation notes
 
 - **Strings.** Every new user-facing string goes in all three catalogs:
   `src/lib/i18n/en.ts`, `es.ts`, `pt.ts`. `defineCatalog` makes a missing key —
