@@ -52,23 +52,39 @@ match = 4 * HEXDIG-lowercase          ; /^[0-9a-f]{4}$/
 ```
 
 That is exactly what the Choke app's `Match._generateMatchId()` emits: four
-characters drawn from `0123456789abcdef`. Fixing it in writing costs nothing now
-and buys three things:
+characters drawn from `0123456789abcdef`.
 
-- **No percent-encoding, ever.** Every legal character is already URL-safe, so
-  the id is written into the query string and read out of it verbatim. Any
-  encoding or decoding step around `match` is a bug, not a precaution.
-- **Comparison is exact after lowercasing.** A link that passed through an
-  auto-capitalising keyboard still resolves, because the reader lowercases before
-  it compares. That is the *only* normalisation: builders always emit lowercase,
-  and nothing else — no trimming of interior characters, no stripping of
-  separators, no aliasing of visually similar glyphs — is applied.
-- **Anything else is REJECTED.** Wrong length, a non-hex character, or any
-  residue left after trimming surrounding whitespace makes the link **broken**,
-  not merely unsatisfied. Broken is the case above — a link that names nothing —
-  and is not the same state as a well-formed id the feed does not contain
-  (Unresolved, §3.2). Conflating them tells the recipient the match ended when in
-  fact the URL arrived damaged.
+**Builders always emit lowercase and unencoded** — every legal character is
+already URL-safe, so there is nothing to escape. Readers accept slightly more
+than that, deliberately: links get mangled by chat clients and auto-capitalising
+keyboards, and this repo's `npub` reader already trims for exactly that reason.
+
+**Validation applies to the decoded value, in this order:**
+
+```text
+decoded value  ->  trim surrounding whitespace  ->  lowercase  ->  /^[0-9a-f]{4}$/
+```
+
+Decoded, not raw. Both platforms' query parsers percent-decode before a caller
+ever sees the value — `URLSearchParams` here, `Uri.queryParameters` in the app —
+and reading the raw query string to get underneath that would be fighting the
+platform for no gain. So, explicitly:
+
+| Query | Decodes to | Verdict |
+|---|---|---|
+| `match=abcd` | `abcd` | accepted |
+| `match=%61%62%63%64` | `abcd` | accepted |
+| `match=abcd%20` | `abcd ` | accepted — trimmed |
+| `match=ABCD` | `ABCD` | accepted — lowercased |
+| `match=abc`, `match=abcde`, `match=zzzz`, `match=ab-cd` | — | **Broken** |
+
+Trimming is of *surrounding* whitespace only. Nothing else is normalised: no
+stripping of interior separators, no aliasing of visually similar glyphs. Any
+value that still fails the pattern after those two steps makes the link
+**broken** — the sender named something unreadable. Broken is the case above, a
+link that names nothing, and is *not* the same state as a well-formed id the
+feed does not contain (Unresolved, §3.2). Conflating them tells the recipient the
+match ended when in fact the URL arrived damaged.
 
 **Known limitation:** four hex characters is 16 bits, generated at random with no
 collision check. Two matches created by the same organizer inside the 24-hour
@@ -204,11 +220,28 @@ Two consequences for a shared match link:
 
 - **The id alone is not enough.** The subscription filter is keyed by
   `authors: [pubkeyHex]`; without the npub there is nobody to subscribe to.
+  This is not only a subscription concern — see the lookup key below.
 - **There is an unavoidable wait.** The pubkey is set, *then* the subscription
   opens, *then* events arrive from the relays some unknown time later. Rendering
   the match view the instant the link opens shows the recipient **"Match not
   found"** as the first thing they see — the precise opposite of what the link
   promised, on the happy path.
+
+**The lookup key is (organizer, matchId), never matchId alone.** Normative, and
+shared with the companion spec: a match resolves only if the event's author
+equals the npub the link named. An event carrying the same id from a *different*
+author must neither resolve the route nor expire it — it is somebody else's
+match that happens to have collided in a 16-bit space (§1), and treating it as
+this link's subject would show one organizer's fight to another organizer's
+guests, or declare a live match over because an unrelated one aged out.
+
+This is a **change, not a description**. `matchesMap` in `src/lib/stores.ts` is
+keyed by match id alone, which is safe today only because the board subscribes to
+exactly one author at a time and `subscribeToMatches` closes the previous
+subscription before opening the next. A match link makes the author an explicit
+part of what the URL names, so the resolution path must compare it rather than
+assume it. Coverage for **two different authors publishing the same match id** is
+owed alongside that change (§7).
 
 ### 3.2 Three states, and the middle one must exist
 
@@ -223,9 +256,13 @@ way twice, so the rules below are **normative** and shared with the companion
 spec:
 
 1. **The settled signal is NIP-01's `EOSE`.** It is the relay saying "that was
-   everything I had stored"; nothing else means the same thing.
-2. **The backstop is 10 seconds after the link opens.** If no `EOSE` and no
-   matching event has arrived by then, Pending ends. Both readers use this same
+   everything I had stored"; nothing else means the same thing. **`EOSE` with no
+   matching event ends Pending immediately** — there is no reason to keep a
+   spinner up once the relays have said they have nothing, and doing so would
+   make the fast, honest answer feel like the slow one.
+2. **The backstop is 10 seconds after the link opens**, for the case where
+   `EOSE` never comes. Pending ends on whichever arrives first, the settled
+   signal or the backstop; neither alone is sufficient. Both readers use this same
    number, so two people opening the same link on different platforms wait the
    same length of time and reach the same screen. Ten is not arbitrary: this repo
    already waits exactly that long before giving up on EOSE
@@ -306,6 +343,21 @@ strip both, or neither.
 This is not hypothetical: it is already happening on every cached bundle in the
 wild (§1.2), and it is the reason the strip fix is step 1 of §6.3 rather than a
 tidy-up at the end.
+
+**When** to strip is as normative as **what**:
+
+- **Nothing is stripped until resolution completes** — Resolved or Unresolved.
+  Today `PubkeyInput.svelte` strips on mount (§2.2), which for a board link is
+  fine because the key is persisted the moment it is read. A match link has no
+  such fallback: stripping on mount throws away the id that a retry, a
+  reconnect, or the late arrival of rule 3 (§3.2) still needs, and leaves the
+  address bar holding `match` without `npub` — the broken form — for the entire
+  time the viewer is waiting.
+- **When it does happen, `npub` and `match` go together, or neither goes.** Half
+  a link in the address bar is worse than the whole one.
+- **A refresh while still Pending therefore re-applies the whole link**, which is
+  the wanted behaviour: the viewer gets another attempt at the thing they were
+  sent, not a board they did not ask for.
 
 This also interacts with the routing question in §3.3 — if the implementation
 redirects to `/match/<id>`, the shareable URL is gone from the address bar the
@@ -423,7 +475,7 @@ either repo.
 | # | Step | Notes |
 |---|---|---|
 | 1 | Read `match=` out of the query string in `src/lib/share-link.ts`, and fix `stripSharedPubkeyFromUrl` to strip both params together or neither | Pure functions, no UI, no routing. The strip fix belongs here and not later: a resolved match link otherwise strands `?match=abcd` in the address bar, which is precisely the broken form §1 defines (§4). Extend `src/lib/share-link.test.ts`. |
-| 2 | Route and resolve: settle redirect-to-`/match/[id]` vs render-in-place (§3.3), then implement Pending / Resolved / Unresolved (§3.2) | The hard part, and the only step with real design left in it. §3.3 is a genuine open question, not a formality. |
+| 2 | Route and resolve: settle redirect-to-`/match/[id]` vs render-in-place (§3.3), then implement Pending / Resolved / Unresolved (§3.2), keying the lookup by (organizer, matchId) (§3.1) and deferring the strip until resolution completes (§4) | The hard part, and the only step with real design left in it. §3.3 is a genuine open question, not a formality. |
 | 3 | Split `match.notFoundBody` into distinct Pending and Unresolved strings in `src/lib/i18n/en.ts`, `es.ts` and `pt.ts` | One string currently hedges across both states — *"may not exist or hasn't been loaded yet"* — which is the exact ambiguity §3.2 exists to remove. All three catalogs, or it does not compile (§7). |
 
 Step 1 is separable and can merge on its own; it changes no behaviour a viewer
@@ -440,13 +492,19 @@ tests round-trip, not a button.
   `src/lib/i18n/en.ts`, `es.ts`, `pt.ts`. `defineCatalog` makes a missing key —
   or a message that dropped a parameter — a compile error, not a blank word on a
   wall. See [Languages](./i18n.md).
-- **Ids stay ids.** A match id is protocol, like `in-progress` or `armbar`. It is
-  never translated and never prettified for display.
+- **Ids stay ids.** A match id such as `abcd` is protocol, in the same way the
+  status and method values `in-progress` and `armbar` are protocol. It is never
+  translated and never prettified for display.
 - **Tests.** `src/lib/share-link.test.ts` pins the query contract in both
   directions. Anything added to the contract in §1 belongs there too — including
-  the `match` grammar: an id of the wrong length or with a non-hex character must
-  be shown to be rejected, not quietly passed through. That file is what stops
-  this repo and the Choke app from drifting apart.
+  the `match` grammar and its parsing order: percent-encoded, whitespace-padded
+  and upper-case forms must be shown to be *accepted*, and wrong length or
+  non-hex characters to be *rejected*, not quietly passed through. That file is
+  what stops this repo and the Choke app from drifting apart.
+- **Cover the collision.** Two different authors publishing the same match id is
+  the case the (organizer, matchId) lookup key exists for (§3.1). It has no
+  coverage today because nothing yet resolves a match by author; it is owed with
+  the change that does.
 - **Pin the window.** Add an assertion that `MATCH_MAX_AGE_SECONDS` is `86400`
   (§5). It looks like a test of a literal against itself; it is not. It is this
   repo's half of a cross-repo agreement, and its only job is to fail the build
