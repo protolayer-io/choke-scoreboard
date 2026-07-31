@@ -30,6 +30,8 @@ vi.mock('$app/stores', async () => {
 const BoardPage = (await import('./+page.svelte')).default;
 const { getBoardPalette } = await import('$lib/board-theme.js');
 const { matchesMap, theme } = await import('$lib/stores.js');
+const { BRAND_NAME, PLAY_STORE_URL } = await import('$lib/constants.js');
+const { locale, translate } = await import('$lib/i18n/index.js');
 type MatchEvent = import('$lib/types.js').MatchEvent;
 
 /**
@@ -102,6 +104,7 @@ afterEach(() => {
 	target.remove();
 	matchesMap.set(new Map());
 	theme.set('dark');
+	locale.set('en');
 });
 
 describe('the board under each theme', () => {
@@ -144,5 +147,62 @@ describe('the board under each theme', () => {
 		// real contrast; asserting a percentage here would freeze today's recipe
 		// and call a future improvement a regression.
 		expect(html()).toMatch(/color-mix\(in srgb, rgb\(37, 99, 235\) \d+%, black\)/);
+	});
+});
+
+/**
+ * The wall is the app's largest audience: a room full of people watching a
+ * match, none of whom have heard of it. Every one of those screens has to say
+ * where the scores come from and how to get the thing — that is the whole loop,
+ * and a board that credits nobody breaks it silently.
+ */
+describe('the invitation to get the app', () => {
+	it('points at the Play Store listing', () => {
+		// Arrange / Act
+		const html = render();
+
+		// Assert
+		expect(html()).toContain(`href="${PLAY_STORE_URL}"`);
+	});
+
+	it('opens it in a new tab, without handing the opener over', () => {
+		// The board is left running unattended on a projector: a tab that
+		// navigated away from a live match would be the operator's problem.
+		const html = render();
+
+		expect(html()).toContain('target="_blank"');
+		expect(html()).toContain('rel="noopener noreferrer"');
+	});
+
+	it('credits the brand in the language of the room', () => {
+		const html = render();
+
+		expect(html()).toContain(translate()('cta.scoredWith', BRAND_NAME));
+		expect(html()).toContain(BRAND_NAME);
+	});
+
+	it('says it in Portuguese when the room reads Portuguese', () => {
+		// Arrange — a board already hanging, mid-tournament
+		const html = render();
+		const english = translate()('cta.scoredWith', BRAND_NAME);
+
+		// Act
+		locale.set('pt');
+		flushSync();
+
+		// Assert — the sentence changed, the domain did not
+		const portuguese = translate()('cta.scoredWith', BRAND_NAME);
+		expect(portuguese).not.toBe(english);
+		expect(html()).toContain(portuguese);
+		expect(html()).not.toContain(english);
+		expect(html()).toContain(BRAND_NAME);
+	});
+
+	it('gives the link a name a screen reader can read on its own', () => {
+		// "bjjscore.live — get the app" out of context is a domain and a shrug;
+		// the accessible name has to say where the link goes.
+		const html = render();
+
+		expect(html()).toContain(`aria-label="${translate()('cta.getTheApp')}"`);
 	});
 });

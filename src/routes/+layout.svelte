@@ -5,6 +5,7 @@
 	import { initLocale, locale, t } from '$lib/i18n/index.js';
 	import { watchFullscreen } from '$lib/fullscreen.js';
 	import { initTheme, watchTheme } from '$lib/theme.js';
+	import { BRAND_NAME, PLAY_STORE_URL } from '$lib/constants.js';
 
 	let { children } = $props();
 
@@ -80,6 +81,21 @@
 					rel="noopener noreferrer"
 					class="no-underline hover:opacity-80"
 					style="color: var(--link-color);">ProtoLayer.io</a
+				>
+			</p>
+			<!--
+				The same invitation the broadcast wall carries. Every page a stranger can
+				land on — a shared match link, the list left open on somebody's laptop — has
+				to say where the scores come from and how to get the app.
+			-->
+			<p class="mt-1">
+				<a
+					href={PLAY_STORE_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					aria-label={$t('cta.getTheApp')}
+					class="no-underline hover:opacity-80"
+					style="color: var(--link-color);">{$t('cta.scoredWith', BRAND_NAME)}</a
 				>
 			</p>
 		</footer>
