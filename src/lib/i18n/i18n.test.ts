@@ -299,6 +299,34 @@ describe('inviting the room to get the app', () => {
 		expect(new Set(names).size).toBe(LOCALES.length);
 	});
 
+	it('keeps the three states of a shared link apart, in every language', () => {
+		// One string used to hedge across all of them — "may not exist or hasn't
+		// been loaded yet" — which is the exact ambiguity the three states exist to
+		// remove. A translator handed three keys can still collapse them back into
+		// one sentence by accident; this is what catches that.
+		for (const code of LOCALES) {
+			locale.set(code);
+			const said = [
+				get(t)('match.pendingBody'),
+				get(t)('match.expiredBody'),
+				get(t)('match.brokenBody')
+			];
+
+			for (const line of said) expect(line.trim().length).toBeGreaterThan(0);
+			expect(new Set(said).size).toBe(3);
+		}
+	});
+
+	it('tells the recipient the match may have ended some time ago', () => {
+		// Not merely that it does not exist. A link older than the 24-hour window
+		// is the common case, and a recipient who is not told the window closed
+		// reads it as the site being broken — and blames the sender.
+		for (const code of LOCALES) {
+			locale.set(code);
+			expect(get(t)('match.expiredBody')).toMatch(/24/);
+		}
+	});
+
 	it('has something to say at the dead end, in every language', () => {
 		// The expired-match page is the one place a stranger arrives already
 		// wanting this — and the one page with no footer to carry the usual line,

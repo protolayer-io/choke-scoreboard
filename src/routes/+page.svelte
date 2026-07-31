@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import PubkeyInput from '../components/PubkeyInput.svelte';
 	import MatchCard from '../components/MatchCard.svelte';
+	import MatchView from '../components/MatchView.svelte';
 	import StatusFilter from '../components/StatusFilter.svelte';
 	import {
 		matchesMap,
@@ -8,12 +10,59 @@
 		isLoading,
 		activePubkey,
 		statusFilter,
-		getSortedMatches
+		getSortedMatches,
+		findMatchByOrganizer,
+		relaysSettled,
+		sharedMatchView
 	} from '$lib/stores.js';
-	import { MATCH_AGE_CHECK_INTERVAL_MS } from '$lib/constants.js';
+	import { MATCH_AGE_CHECK_INTERVAL_MS, MATCH_LINK_BACKSTOP_MS } from '$lib/constants.js';
+	import { readSharedMatchLink, stripSharedLinkFromUrl } from '$lib/share-link.js';
+	import { connectToPubkey } from '$lib/connect.js';
+	import { decodePubkey } from '$lib/nostr.js';
 	import { t } from '$lib/i18n/index.js';
 	import { base } from '$app/paths';
 	import type { MatchEvent, MatchStatus, ViewMode } from '$lib/types.js';
+
+	/**
+	 * ────────────────────────────────────────────────────────────────────────
+	 * A shared match link resolves HERE, in place, and is not redirected to
+	 * /match/<id>.
+	 *
+	 * Redirecting reads better and loses the link. The rule is that nothing is
+	 * stripped until resolution completes, and that a refresh while still waiting
+	 * re-applies the whole link — a navigation to /match/abcd breaks both at once:
+	 * the id survives in the path but the organizer does not, so a refresh from
+	 * there is a cold visit to a route with nothing subscribed, and the recipient
+	 * gets an instant dead end for a match that was on its way. It would also
+	 * leave nobody with anything to forward.
+	 *
+	 * Rendering in place costs one thing — two callers for the match view — and
+	 * that was paid by extracting MatchView, which the route now renders too. No
+	 * markup is duplicated.
+	 * ────────────────────────────────────────────────────────────────────────
+	 */
+
+	// Read at setup and not in onMount, because it decides what to render on the
+	// FIRST paint. A match link that showed the board for a frame before swapping
+	// would be the silent substitution the whole design refuses, briefly.
+	const link =
+		typeof window !== 'undefined'
+			? readSharedMatchLink(window.location.search)
+			: ({ kind: 'none' } as const);
+
+	// The viewer can leave — deliberately, never silently. Dismissing drops the
+	// link and hands them the board they can already see the shape of.
+	let dismissed = $state(false);
+	let isMatchLink = $derived(link.kind !== 'none' && !dismissed);
+
+	let organizerHex = $state('');
+	let brokenKey = $state(false);
+	let backstopFired = $state(false);
+
+	$effect(() => {
+		sharedMatchView.set(isMatchLink);
+		return () => sharedMatchView.set(false);
+	});
 
 	let allMatches = $state<Map<string, MatchEvent>>(new Map());
 	let nowSeconds = $state(Math.floor(Date.now() / 1000));
@@ -74,12 +123,113 @@
 	function toggleViewMode(): void {
 		viewMode.update((v) => (v === 'compact' ? 'broadcast' : 'compact'));
 	}
+
+	// ─── Resolving the link ──────────────────────────────────────────────────
+
+	onMount(() => {
+		if (link.kind !== 'match') return;
+
+		try {
+			organizerHex = decodePubkey(link.pubkey);
+		} catch {
+			// A key that will not decode names no author, so there is nobody to ask
+			// and nothing to wait for. That is a damaged URL, not a match that ended.
+			brokenKey = true;
+			return;
+		}
+
+		connectToPubkey(organizerHex);
+
+		// The backstop, for the case where EOSE never comes. Its own timer and NOT
+		// a second reader of `isLoading`: that store is cleared by EOSE and by the
+		// subscription's own timeout alike, so watching it would end the wait on
+		// whichever fired first with no way to know which — and knowing which is
+		// exactly what tells "the relays do not have it" from "nobody answered".
+		const backstop = setTimeout(() => {
+			backstopFired = true;
+		}, MATCH_LINK_BACKSTOP_MS);
+
+		return () => clearTimeout(backstop);
+	});
+
+	let settled = $state(false);
+	$effect(() => {
+		const unsub = relaysSettled.subscribe((v) => {
+			settled = v;
+		});
+		return unsub;
+	});
+
+	// (organizer, matchId), never matchId alone. An event carrying the same four
+	// hex characters from a different author is somebody else's match that
+	// collided in a 16-bit space; resolving to it would show one organizer's fight
+	// to another organizer's guests.
+	let linkedMatch = $derived<MatchEvent | undefined>(
+		link.kind === 'match'
+			? findMatchByOrganizer(allMatches, organizerHex, link.matchId, nowSeconds)
+			: undefined
+	);
+
+	// Pending ends on EOSE-with-no-matching-event OR the backstop, whichever comes
+	// first. Neither alone is sufficient.
+	let isPending = $derived(!linkedMatch && !brokenKey && !settled && !backstopFired);
+
+	let missing = $derived<'pending' | 'unresolved' | 'broken'>(
+		link.kind === 'broken' || brokenKey ? 'broken' : isPending ? 'pending' : 'unresolved'
+	);
+
+	/**
+	 * Strip once resolution completes, and not before.
+	 *
+	 * Both params go together or neither goes, and "when" matters as much: while
+	 * Pending, the URL is the only place the match id exists — nothing persists it
+	 * — so stripping early would throw away what a refresh, a reconnect or a late
+	 * arrival still needs, and would leave `?match=…` without `?npub=…` in the bar
+	 * for the whole wait. A refresh while Pending therefore re-applies the whole
+	 * link, which is the wanted behaviour: another attempt at the thing they were
+	 * sent, not a board they did not ask for.
+	 *
+	 * A broken link is already resolved — there was never anything to wait for.
+	 */
+	let stripped = false;
+	$effect(() => {
+		if (link.kind === 'none' || stripped) return;
+		if (missing === 'pending') return;
+
+		stripped = true;
+		stripSharedLinkFromUrl();
+	});
+
+	/**
+	 * Unresolved never becomes the board on its own.
+	 *
+	 * A late arrival still wins — `linkedMatch` keeps reading the store and the
+	 * subscription outlives the backstop, so an event that turns up after the move
+	 * to Unresolved resolves for free. What must never happen is the reverse: the
+	 * viewer followed a link meant for one particular thing, and quietly showing
+	 * them a different thing that looks like it worked is a lie they cannot catch.
+	 * Leaving is a tap they take themselves.
+	 */
+	function dismissLink(): void {
+		dismissed = true;
+	}
 </script>
 
+<!--
+	MatchView carries its own <title>, naming the two fighters. So this one steps
+	aside while a link is on screen, rather than titling a named match with the
+	list's name.
+-->
 <svelte:head>
-	<title>{$t('title.home')}</title>
+	{#if !isMatchLink}
+		<title>{$t('title.home')}</title>
+	{/if}
 </svelte:head>
 
+{#if isMatchLink}
+	<!-- The link's own view, full viewport. -->
+	<MatchView match={linkedMatch} {missing} onExit={dismissLink} />
+{:else}
 <div class="mx-auto max-w-6xl" style="padding: 26px 30px 40px;">
 	<PubkeyInput />
 
@@ -195,3 +345,4 @@
 		</div>
 	{/if}
 </div>
+{/if}

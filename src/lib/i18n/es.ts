@@ -96,8 +96,16 @@ export const es = defineCatalog({
 	// ─── Vista de transmisión ───────────────────────────────────────────────
 	'match.back': 'Volver',
 	'match.notFoundTitle': 'Lucha no encontrada',
-	'match.notFoundBody': 'Puede que esta lucha no exista o que todavía no se haya cargado.',
 	'match.backToScoreboard': 'Volver al tablero',
+
+	// ─── Los tres estados de un enlace a una lucha ──────────────────────────
+	'match.pendingTitle': 'Cargando la lucha…',
+	'match.pendingBody': 'Esperando el tablero del organizador.',
+	'match.expiredBody':
+		'No está entre las luchas recientes de este organizador. Las luchas se conservan 24 horas, así que puede que haya terminado hace rato.',
+	'match.brokenTitle': 'Este enlace está roto',
+	'match.brokenBody':
+		'El enlace no nombra ninguna lucha que podamos buscar. Pídele uno nuevo a quien te lo envió.',
 
 	// ─── Cómo se ganó la lucha ──────────────────────────────────────────────
 	'method.submission': 'SUMISIÓN',

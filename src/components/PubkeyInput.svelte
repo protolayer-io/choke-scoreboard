@@ -20,7 +20,8 @@
 		clearPersistedPubkey
 	} from '$lib/stores.js';
 	import { getDebugMatches } from '$lib/debug-matches.js';
-	import { readSharedPubkey, stripSharedPubkeyFromUrl } from '$lib/share-link.js';
+	import { readSharedPubkey, stripSharedLinkFromUrl } from '$lib/share-link.js';
+	import { connectToPubkey } from '$lib/connect.js';
 	import type { MatchEvent } from '$lib/types.js';
 
 	/**
@@ -39,14 +40,6 @@
 
 	let inputValue = $state('');
 	let errorKey = $state<PubkeyErrorKey | ''>('');
-
-	function connectToPubkey(hex: string): void {
-		clearMatches();
-		debugMode.set(false);
-		activePubkey.set(hex);
-		persistPubkey(hex);
-		subscribeToMatches(hex);
-	}
 
 	function handleLoad(): void {
 		errorKey = '';
@@ -111,20 +104,27 @@
 	}
 
 	onMount(() => {
-		// A shared link (…/?npub=…) wins over whatever was last loaded on this
+		// A BOARD link (…/?npub=…) wins over whatever was last loaded on this
 		// device: the person following it means to watch that organizer right now.
 		// Once loaded the key is persisted, so we strip it from the address bar —
 		// a later refresh restores it from storage, not from a stale URL.
+		//
+		// Stripping on mount is safe HERE and only here, and that is the whole
+		// difference between the two kinds of link. The key survives in storage;
+		// a match id survives nowhere, so the page that resolves one holds the URL
+		// until it has an answer. This component never sees a match link at all —
+		// the root page does not render it in that mode — so the strip below is
+		// always a board link's.
 		const shared = readSharedPubkey(window.location.search);
 		if (shared) {
 			try {
 				loadPubkey(decodePubkey(shared));
-				stripSharedPubkeyFromUrl();
+				stripSharedLinkFromUrl();
 				return;
 			} catch {
 				// A malformed link shouldn't strand the viewer: drop it and fall back
 				// to any key they already had.
-				stripSharedPubkeyFromUrl();
+				stripSharedLinkFromUrl();
 			}
 		}
 

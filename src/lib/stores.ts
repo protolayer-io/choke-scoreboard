@@ -56,8 +56,35 @@ export const debugMode = writable<boolean>(false);
 /** Currently subscribed organizer pubkey (hex) */
 export const activePubkey = writable<string>('');
 
+/**
+ * True while the ROOT page is showing one match full-screen — a shared match
+ * link, being resolved or resolved.
+ *
+ * The layout drops its header and footer for the broadcast view, and knows the
+ * match ROUTE by its route id. A shared link never becomes a route: the app's
+ * App Links filter claims `/` and nothing else, so `?npub=…&match=…` resolves
+ * where it landed. This is how the same view says so from the root.
+ */
+export const sharedMatchView = writable<boolean>(false);
+
 /** Loading state for Nostr subscription */
 export const isLoading = writable<boolean>(false);
+
+/**
+ * Whether the relays have said "that was everything I had stored" — NIP-01's
+ * EOSE — for the subscription that is currently open.
+ *
+ * Its own channel, deliberately, and not a second reader of `isLoading`.
+ * `isLoading` is cleared by EOSE *and* by the timeout that exists in case EOSE
+ * never comes, so a caller watching it gets whichever happened first with no way
+ * to tell them apart. That is enough for a spinner over a list and not enough
+ * for a shared match link: "the relays answered and do not have this match" is a
+ * settled answer, while "ten seconds passed and nobody answered" is a guess that
+ * a late arrival may still overturn.
+ *
+ * Reset to false whenever a subscription opens, including a watchdog rebuild.
+ */
+export const relaysSettled = writable<boolean>(false);
 
 /**
  * Theme: 'dark' | 'light'.
@@ -118,6 +145,38 @@ export function isMatchFresh(
 ): boolean {
 	if (!match) return false;
 	return (match.created_at ?? 0) >= nowSeconds - MATCH_MAX_AGE_SECONDS;
+}
+
+/**
+ * The one match an organizer and an id name together, or undefined.
+ *
+ * **The lookup key is (organizer, matchId), never matchId alone.** A match id is
+ * four hex characters generated at random with no collision check, so it is only
+ * unique inside one author's events. An event carrying the same id from a
+ * DIFFERENT author must neither resolve this lookup nor expire it: it is
+ * somebody else's match that happened to collide in a 16-bit space, and
+ * returning it would show one organizer's fight to another organizer's guests —
+ * or declare a live match over because an unrelated one aged out.
+ *
+ * `matchesMap` is keyed by id alone, which is safe while the board subscribes to
+ * exactly one author at a time. A shared link makes the author an explicit part
+ * of what the URL names, so this compares it rather than assuming it.
+ *
+ * Freshness is applied here too, so an expired match is undefined for the same
+ * reason a missing one is: it is not something to show.
+ */
+export function findMatchByOrganizer(
+	map: Map<string, MatchEvent>,
+	organizer: string,
+	matchId: string,
+	nowSeconds: number = Math.floor(Date.now() / 1000)
+): MatchEvent | undefined {
+	if (!organizer || !matchId) return undefined;
+
+	const found = map.get(matchId);
+	if (!found || found.pubkey !== organizer) return undefined;
+
+	return isMatchFresh(found, nowSeconds) ? found : undefined;
 }
 
 /**
