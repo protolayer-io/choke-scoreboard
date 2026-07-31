@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { BRAND_NAME } from '../constants.js';
 import { en } from './en.js';
 import {
 	defineCatalog,
@@ -251,6 +252,51 @@ describe('speaking Portuguese', () => {
 		locale.set('pt');
 
 		expect(get(t)('home.matchCount', 0)).toBe('0 lutas');
+	});
+});
+
+/**
+ * The viral loop, in words.
+ *
+ * Every live page credits bjjscore.live and invites whoever is watching to
+ * install the app — which only works if it says so in the language of the room,
+ * and only stays honest if the domain survives translation. `cta.scoredWith`
+ * takes the brand as a value for exactly that reason: a translator owns the
+ * sentence around it and never the name itself.
+ */
+describe('inviting the room to get the app', () => {
+	afterEach(() => {
+		locale.set('en');
+	});
+
+	it('has the invitation in every language, and says something different in each', () => {
+		// Arrange
+		const said = LOCALES.map((code) => {
+			locale.set(code);
+			return get(t)('cta.scoredWith', BRAND_NAME);
+		});
+
+		// Assert — three languages, three sentences. A catalog that copy-pasted the
+		// English line would pass a key check and fail the room.
+		expect(new Set(said).size).toBe(LOCALES.length);
+	});
+
+	it('never translates the domain', () => {
+		for (const code of LOCALES) {
+			locale.set(code);
+			expect(get(t)('cta.scoredWith', BRAND_NAME)).toContain(BRAND_NAME);
+			expect(get(t)('cta.scoredWith', BRAND_NAME)).not.toBe(BRAND_NAME);
+		}
+	});
+
+	it('names the destination for a screen reader, in every language', () => {
+		const names = LOCALES.map((code) => {
+			locale.set(code);
+			return get(t)('cta.getTheApp');
+		});
+
+		for (const name of names) expect(name.trim().length).toBeGreaterThan(0);
+		expect(new Set(names).size).toBe(LOCALES.length);
 	});
 });
 

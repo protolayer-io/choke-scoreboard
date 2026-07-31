@@ -35,6 +35,21 @@ export const en = {
 
 	'footer.builtBy': 'Built by',
 
+	// ─── The invitation to get the app ──────────────────────────────────────
+	//
+	// The board hangs where a room full of people can see it, and none of them
+	// asked for it: this line is the only thing telling them what they are looking
+	// at and where to get it. It is on the wall AND in the footer, because both are
+	// pages a stranger reaches before they have ever heard of the app.
+	//
+	// The brand arrives as a VALUE and is never a word in this file — it is a
+	// domain name, identical in every language, and a catalog that spelled it out
+	// would eventually mistype it in a language nobody here proofreads.
+	'cta.scoredWith': (brand: string) => `Live scores by ${brand} — get the app`,
+	// What a screen reader has when the link is all it reads. "get the app" alone
+	// is a shrug: this has to name the destination.
+	'cta.getTheApp': 'Get Choke Scoreboard on Google Play',
+
 	// ─── Connecting to an organizer ─────────────────────────────────────────
 	'pubkey.placeholder': 'Enter organizer npub or hex pubkey...',
 	'pubkey.load': 'Load',

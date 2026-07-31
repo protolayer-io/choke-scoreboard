@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
 	import { matchesMap, isMatchFresh, theme } from '$lib/stores.js';
-	import { MATCH_AGE_CHECK_INTERVAL_MS } from '$lib/constants.js';
+	import { BRAND_NAME, MATCH_AGE_CHECK_INTERVAL_MS, PLAY_STORE_URL } from '$lib/constants.js';
 	import {
 		getF1EffectiveAdvantages,
 		getF1EffectivePoints,
@@ -382,6 +382,35 @@
 		>
 			{$isFullscreen ? $t('fullscreen.exit') : $t('fullscreen.enter')}
 		</button>
+
+		<!--
+			The viral loop.
+
+			This board is watched by a room full of people who did not install
+			anything, and it is the only advertisement the app has: without a line
+			saying where the scores come from, a spectator who wants this for their own
+			gym has nothing to go on.
+
+			It lives HERE, in the page, because the layout deliberately renders no
+			footer for this route — and it sits along the bottom edge, the one band of
+			the wall neither fighter's column nor the centre clock uses.
+
+			Deliberately dimmer than the Back and Fullscreen controls: `palette.muted`
+			rather than the chrome's own text color. Those two are for the operator
+			standing at the laptop; this one is for someone across the gym, and must
+			never pull an eye off the score. `palette.chrome` still carries the hover
+			affordance for the operator who does go looking for it.
+		-->
+		<a
+			href={PLAY_STORE_URL}
+			target="_blank"
+			rel="noopener noreferrer"
+			aria-label={$t('cta.getTheApp')}
+			class="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-lg px-3 py-1.5 whitespace-nowrap no-underline transition-colors {palette.chrome}"
+			style="color:{palette.muted};font-family:'Barlow Condensed', system-ui, sans-serif;font-weight:600;font-size:clamp(0.6rem,1.05vw,17px);letter-spacing:0.12em"
+		>
+			{$t('cta.scoredWith', BRAND_NAME)}
+		</a>
 	</div>
 {:else}
 	<div

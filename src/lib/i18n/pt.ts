@@ -26,6 +26,10 @@ export const pt = defineCatalog({
 	'language.pt': 'Português',
 	'footer.builtBy': 'Feito por',
 
+	// ─── O convite para baixar o app ────────────────────────────────────────
+	'cta.scoredWith': (brand: string) => `Placar ao vivo por ${brand} — baixe o app`,
+	'cta.getTheApp': 'Baixe o Choke Scoreboard no Google Play',
+
 	// ─── Conexão com o organizador ──────────────────────────────────────────
 	'pubkey.placeholder': 'Digite a npub ou chave pública hex do organizador...',
 	'pubkey.load': 'Carregar',
