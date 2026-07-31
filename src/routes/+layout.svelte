@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import Header from '../components/Header.svelte';
 	import { initLocale, locale, t } from '$lib/i18n/index.js';
+	import { sharedMatchView } from '$lib/stores.js';
 	import { watchFullscreen } from '$lib/fullscreen.js';
 	import { initTheme, watchTheme } from '$lib/theme.js';
 	import { BRAND_NAME, PLAY_STORE_URL } from '$lib/constants.js';
@@ -38,7 +39,11 @@
 
 
 	// The broadcast match view owns the whole viewport: no header, no footer.
-	let isBroadcast = $derived($page.route.id === '/match/[id]');
+	//
+	// Two ways to be in it, because a shared match link is NOT a route: the app's
+	// App Links filter claims `/` and nothing deeper, so `?npub=…&match=…`
+	// resolves on the root page and the router has nothing to tell us apart by.
+	let isBroadcast = $derived($page.route.id === '/match/[id]' || $sharedMatchView);
 
 	// Keep <html lang> and the description honest.
 	//

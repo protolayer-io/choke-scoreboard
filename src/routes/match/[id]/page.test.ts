@@ -29,7 +29,7 @@ vi.mock('$app/stores', async () => {
 
 const BoardPage = (await import('./+page.svelte')).default;
 const { getBoardPalette } = await import('$lib/board-theme.js');
-const { matchesMap, theme } = await import('$lib/stores.js');
+const { activePubkey, matchesMap, theme } = await import('$lib/stores.js');
 const { BRAND_NAME, PLAY_STORE_URL } = await import('$lib/constants.js');
 const { locale, translate } = await import('$lib/i18n/index.js');
 type MatchEvent = import('$lib/types.js').MatchEvent;
@@ -111,6 +111,10 @@ beforeEach(() => {
 	target = document.createElement('div');
 	document.body.appendChild(target);
 	theme.set('dark');
+	// The route looks a match up by (organizer, id), not by id alone — a match id
+	// is unique only inside one author's events. The fixtures above are published
+	// by `debug`, which is what the board is watching whenever they are on screen.
+	activePubkey.set('debug');
 });
 
 afterEach(() => {
@@ -118,6 +122,7 @@ afterEach(() => {
 	component = null;
 	target.remove();
 	matchesMap.set(new Map());
+	activePubkey.set('');
 	theme.set('dark');
 	locale.set('en');
 });

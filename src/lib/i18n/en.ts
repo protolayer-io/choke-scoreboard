@@ -151,8 +151,32 @@ export const en = {
 	// ─── The broadcast view ─────────────────────────────────────────────────
 	'match.back': 'Back',
 	'match.notFoundTitle': 'Match not found',
-	'match.notFoundBody': "This match may not exist or hasn't been loaded yet.",
 	'match.backToScoreboard': 'Back to scoreboard',
+
+	// ─── The three states a shared match link can be in ─────────────────────
+	//
+	// There used to be one string here — "This match may not exist or hasn't
+	// been loaded yet" — hedging across all of them at once, which is exactly
+	// the ambiguity the three states exist to remove. A person who followed a
+	// link is owed a straight answer to "am I about to see this or not".
+	//
+	// Pending: named, not answered for yet. Say we are looking, not that it is
+	// missing.
+	'match.pendingTitle': 'Loading the match…',
+	'match.pendingBody': 'Waiting for the organizer’s scoreboard.',
+
+	// Unresolved: the feed settled and this id is not in it. The common case by
+	// far is a link older than a day, so say so — a recipient who is not told
+	// the window closed concludes the site is broken, and blames the sender.
+	'match.expiredBody':
+		'It isn’t in this organizer’s recent matches. Matches stay here for 24 hours, so it may have ended some time ago.',
+
+	// Broken: the URL itself arrived damaged. NOT the same as expired, and must
+	// never be dressed up as it — nothing about this link ever named a match, so
+	// telling this person it ended is a different lie.
+	'match.brokenTitle': 'This link is broken',
+	'match.brokenBody':
+		'The link doesn’t name a match we can look up. Ask whoever sent it for a fresh one.',
 
 	// ─── How a match was won ────────────────────────────────────────────────
 	//

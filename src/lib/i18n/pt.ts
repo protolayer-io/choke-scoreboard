@@ -106,8 +106,16 @@ export const pt = defineCatalog({
 	// ─── Transmissão ────────────────────────────────────────────────────────
 	'match.back': 'Voltar',
 	'match.notFoundTitle': 'Luta não encontrada',
-	'match.notFoundBody': 'Pode ser que esta luta não exista ou ainda não tenha sido carregada.',
 	'match.backToScoreboard': 'Voltar ao placar',
+
+	// ─── Os três estados de um link de luta ─────────────────────────────────
+	'match.pendingTitle': 'Carregando a luta…',
+	'match.pendingBody': 'Aguardando o placar do organizador.',
+	'match.expiredBody':
+		'Ela não está entre as lutas recentes deste organizador. As lutas ficam aqui por 24 horas, então pode ser que já tenha terminado há algum tempo.',
+	'match.brokenTitle': 'Este link está quebrado',
+	'match.brokenBody':
+		'O link não nomeia nenhuma luta que possamos procurar. Peça um novo para quem enviou.',
 
 	// ─── Como a luta foi vencida ────────────────────────────────────────────
 	'method.submission': 'FINALIZAÇÃO',

@@ -1,8 +1,18 @@
+<!--
+	The broadcast board, and the three things it shows instead when there is no
+	match to show.
+
+	It lives in `components/` and not in the match route because a shared match
+	link resolves ON THE ROOT PAGE — the app's App Links filter claims `/` and
+	nothing else, so `?npub=…&match=…` never becomes a deeper path. Two callers
+	render this: the route a viewer reaches from the board, and the root page
+	holding a link it is still resolving. Leaving the markup in the route would
+	have meant a second copy of a 300-line wall, drifting.
+-->
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-	import { matchesMap, isMatchFresh, theme } from '$lib/stores.js';
-	import { BRAND_NAME, MATCH_AGE_CHECK_INTERVAL_MS, PLAY_STORE_URL } from '$lib/constants.js';
+	import { theme } from '$lib/stores.js';
+	import { BRAND_NAME, PLAY_STORE_URL } from '$lib/constants.js';
 	import {
 		getF1EffectiveAdvantages,
 		getF1EffectivePoints,
@@ -17,8 +27,39 @@
 	import { isFullscreen, toggleFullscreen } from '$lib/fullscreen.js';
 	import { t } from '$lib/i18n/index.js';
 	import { formatOutcome } from '$lib/i18n/outcome.js';
-	import Timer from '../../../components/Timer.svelte';
+	import Timer from './Timer.svelte';
 	import type { MatchEvent } from '$lib/types.js';
+
+	/**
+	 * Why there is no match on screen, when there is no match on screen.
+	 *
+	 * - `pending`  — one has been named and the feed has not answered yet. Not an
+	 *   absence: an unfinished question, and saying "not found" here would be the
+	 *   precise opposite of what the link promised, on the happy path.
+	 * - `unresolved` — the feed settled and this id is not in it. Almost always a
+	 *   link older than the 24-hour window.
+	 * - `broken` — the URL itself is unreadable. Kept apart from `unresolved`
+	 *   because telling this person the match ended is a different lie.
+	 */
+	export type MissingReason = 'pending' | 'unresolved' | 'broken';
+
+	let {
+		match,
+		missing = 'unresolved',
+		onExit
+	}: { match?: MatchEvent; missing?: MissingReason; onExit?: () => void } = $props();
+
+	/**
+	 * How to leave.
+	 *
+	 * On the match ROUTE the way out is a link to `/` and the router does the
+	 * rest. On the root page it cannot be: the shared match view IS `/`, so an
+	 * anchor pointing there navigates nowhere and strands the viewer on a dead
+	 * end with a working-looking way off it. So the caller may hand over a
+	 * dismissal instead, and the board stays exactly one deliberate tap away —
+	 * which is the whole point. It is never a silent substitution.
+	 */
+	const exits = $derived(onExit !== undefined);
 
 	const DEFAULT_F1_COLOR = '#13c88a';
 	const DEFAULT_F2_COLOR = '#ff9f33';
@@ -42,23 +83,6 @@
 		canceled: 'status.canceled',
 		paused: 'status.paused'
 	} as const satisfies Record<BoardStatus, string>;
-
-	let matchId = $derived($page.params.id ?? '');
-	let nowSeconds = $state(Math.floor(Date.now() / 1000));
-
-	// Advance the clock so a match open in this view expires once it ages out,
-	// instead of lingering here after the list has dropped it.
-	$effect(() => {
-		const id = setInterval(() => {
-			nowSeconds = Math.floor(Date.now() / 1000);
-		}, MATCH_AGE_CHECK_INTERVAL_MS);
-		return () => clearInterval(id);
-	});
-
-	let stored = $derived<MatchEvent | undefined>($matchesMap.get(matchId));
-	let match = $derived<MatchEvent | undefined>(
-		isMatchFresh(stored, nowSeconds) ? stored : undefined
-	);
 
 	// Effective: a penalty against the opponent has already become points — and
 	// its second one has already become an advantage. Showing the raw advantage
@@ -117,6 +141,23 @@
 	let statusKey = $derived<BoardStatus>(isPaused ? 'paused' : (match?.status ?? 'waiting'));
 	let statusColor = $derived(isFinal ? winnerColor : palette.status[statusKey].color);
 	let statusDot = $derived(isFinal ? winnerColor : palette.status[statusKey].dot);
+
+	// The dead end says what is actually known, and the three answers are not
+	// interchangeable. `as const satisfies` keeps $t's key checking, which is all
+	// that stands between a typo and a wall reading `match.expiredBody`.
+	const MISSING_TITLES = {
+		pending: 'match.pendingTitle',
+		unresolved: 'match.notFoundTitle',
+		broken: 'match.brokenTitle'
+	} as const satisfies Record<MissingReason, string>;
+
+	const MISSING_BODIES = {
+		pending: 'match.pendingBody',
+		unresolved: 'match.expiredBody',
+		broken: 'match.brokenBody'
+	} as const satisfies Record<MissingReason, string>;
+
+	let isPending = $derived(!match && missing === 'pending');
 
 </script>
 
@@ -365,15 +406,29 @@
 		{/if}
 
 		<!-- Overlay controls -->
-		<a
-			href="{base}/"
-			class="absolute top-4 left-6 z-10 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm no-underline transition-colors {palette.chrome}"
-		>
+		{#snippet backChevron()}
 			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<polyline points="15 18 9 12 15 6" />
 			</svg>
 			{$t('match.back')}
-		</a>
+		{/snippet}
+
+		{#if exits}
+			<button
+				type="button"
+				onclick={onExit}
+				class="absolute top-4 left-6 z-10 inline-flex cursor-pointer items-center gap-1 rounded-lg bg-transparent px-3 py-2 text-sm transition-colors {palette.chrome}"
+			>
+				{@render backChevron()}
+			</button>
+		{:else}
+			<a
+				href="{base}/"
+				class="absolute top-4 left-6 z-10 inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm no-underline transition-colors {palette.chrome}"
+			>
+				{@render backChevron()}
+			</a>
+		{/if}
 
 		<button
 			type="button"
@@ -417,10 +472,29 @@
 		class="flex h-full flex-col items-center justify-center text-center"
 		style="background:{palette.surface}"
 	>
-		<span class="text-5xl">🤷</span>
-		<p class="mt-4 text-lg font-medium" style="color: var(--text-secondary);">{$t('match.notFoundTitle')}</p>
-		<p class="mt-1 text-sm" style="color: var(--text-secondary);">
-			{$t('match.notFoundBody')}
+		<!--
+			Pending is a different face, not a different sentence.
+
+			A shrug emoji is an answer, and while the relays are still being asked
+			there isn't one yet — showing it here would tell a person who followed a
+			working link, to a live match, that their fight does not exist, in the
+			half-second before it appears. So Pending gets the spinner the board
+			already uses for the same wait, and the shrug is kept for the two states
+			that really are a dead end.
+		-->
+		{#if isPending}
+			<div
+				class="h-10 w-10 animate-spin rounded-full border-4 border-t-transparent"
+				style="border-color: var(--border-color); border-top-color: var(--color-green-live);"
+			></div>
+		{:else}
+			<span class="text-5xl">🤷</span>
+		{/if}
+		<p class="mt-4 text-lg font-medium" style="color: var(--text-secondary);">
+			{$t(MISSING_TITLES[missing])}
+		</p>
+		<p class="mt-1 max-w-sm text-sm" style="color: var(--text-secondary);">
+			{$t(MISSING_BODIES[missing])}
 		</p>
 
 		<!--
@@ -440,7 +514,14 @@
 			an eye away from, and the button is the only thing on the page worth
 			doing — `match.backToScoreboard` stays underneath it, demoted to what it
 			always was: the way out for the operator who mistyped a match id.
+
+			Withheld while Pending, and only while Pending. This pitch is for someone
+			whose journey ended here; flashing it under a spinner would pitch the app
+			to a person who is two seconds away from watching the match, and then take
+			it away again. The board link below is withheld with it for the same
+			reason — an exit offered before there is anything to exit from.
 		-->
+		{#if !isPending}
 		<p class="mt-8 max-w-xs text-sm" style="color: var(--text-secondary);">
 			{$t('cta.deadEndPitch')}
 		</p>
@@ -455,6 +536,16 @@
 			{$t('cta.install')}
 		</a>
 
-		<a href="{base}/" class="mt-6 text-sm underline" style="color: var(--text-secondary);">{$t('match.backToScoreboard')}</a>
+		{#if exits}
+			<button
+				type="button"
+				onclick={onExit}
+				class="mt-6 cursor-pointer bg-transparent text-sm underline"
+				style="color: var(--text-secondary);">{$t('match.backToScoreboard')}</button
+			>
+		{:else}
+			<a href="{base}/" class="mt-6 text-sm underline" style="color: var(--text-secondary);">{$t('match.backToScoreboard')}</a>
+		{/if}
+		{/if}
 	</div>
 {/if}
