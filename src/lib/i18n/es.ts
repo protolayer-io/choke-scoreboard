@@ -156,7 +156,7 @@ export const es = defineCatalog({
 	'error.backToScoreboard': 'Volver al tablero',
 
 	// ─── Títulos ────────────────────────────────────────────────────────────
-	'title.home': '🥋 Choke Scoreboard',
+	'title.home': '🥋 Choke Scoreboard — marcador de BJJ en vivo',
 	'title.match': (f1: string, f2: string) => `${f1} vs ${f2} — Choke Scoreboard`,
 	'title.matchFallback': 'Lucha — Choke Scoreboard'
 });

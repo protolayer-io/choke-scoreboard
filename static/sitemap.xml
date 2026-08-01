@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  One entry, on purpose.
+
+  Every link this app hands out is the same page carrying query params
+  (/?npub=…&match=…), and a board only exists while its organizer is scoring,
+  so there is no durable second URL to list. /match/[id] is left out for the
+  same reason: it is a view of something that expires.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<url>
+		<loc>https://bjjscore.live/</loc>
+		<changefreq>weekly</changefreq>
+		<priority>1.0</priority>
+	</url>
+</urlset>
