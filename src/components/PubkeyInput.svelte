@@ -19,7 +19,6 @@
 		loadPersistedPubkey,
 		clearPersistedPubkey
 	} from '$lib/stores.js';
-	import { getDebugMatches } from '$lib/debug-matches.js';
 	import { readSharedPubkey, stripSharedLinkFromUrl } from '$lib/share-link.js';
 	import { connectToPubkey } from '$lib/connect.js';
 	import type { MatchEvent } from '$lib/types.js';
@@ -51,7 +50,16 @@
 		}
 	}
 
-	function handleDebug(): void {
+	/**
+	 * Fill the board with invented matches, for looking at states nobody can
+	 * stage on demand — a clock at 0:00, a disqualification, eight at once.
+	 *
+	 * Development only, in the literal sense: the button is compiled out of the
+	 * production bundle, and `debug-matches.js` is imported on demand so it
+	 * leaves with the button instead of riding along in every spectator's
+	 * download. Made async by that import; nothing awaits the handler, as before.
+	 */
+	async function handleDebug(): Promise<void> {
 		errorKey = '';
 		closeSubscription();
 		clearMatches();
@@ -60,6 +68,7 @@
 		activePubkey.set('debug');
 		isLoading.set(false);
 
+		const { getDebugMatches } = await import('$lib/debug-matches.js');
 		const matches = getDebugMatches();
 		matchesMap.set(new Map<string, MatchEvent>(matches.map((m) => [m.id, m])));
 	}
@@ -160,13 +169,22 @@
 			{:else}
 				<div></div>
 			{/if}
-			<button
-				onclick={handleDebug}
-				class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
-				style="background-color: var(--bg-input); color: var(--text-secondary);"
-			>
-				{$t('pubkey.debugMode')}
-			</button>
+			<!--
+				Developers only, so it exists only where developers are. `DEV` is
+				replaced by a literal at build time, so this whole block — and the
+				fixtures behind it — is dropped from the bundle bjjscore.live serves.
+				Not merely hidden: a board on a gym wall cannot be talked into showing
+				invented fighters, because the invented fighters are not there.
+			-->
+			{#if import.meta.env.DEV}
+				<button
+					onclick={handleDebug}
+					class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
+					style="background-color: var(--bg-input); color: var(--text-secondary);"
+				>
+					{$t('pubkey.debugMode')}
+				</button>
+			{/if}
 		</div>
 	{:else}
 		<!-- Connection pill (design 2A): glowing dot, the npub in a mono face,
