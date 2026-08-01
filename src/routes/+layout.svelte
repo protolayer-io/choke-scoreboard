@@ -64,16 +64,36 @@
 	});
 </script>
 
-{#if isBroadcast}
-	<div class="h-dvh w-screen overflow-hidden">
-		{@render children()}
-	</div>
-{:else}
-	<div class="flex min-h-screen flex-col">
+<!--
+	`children()` is rendered from exactly ONE place, and the chrome comes and goes
+	around it. Load-bearing, not tidiness.
+
+	Two call sites — one per branch of an {#if} — are two different positions in
+	the tree, so flipping `isBroadcast` DESTROYS the page and mounts a fresh one.
+	That is fatal here, because the page is what sets `sharedMatchView`, which is
+	what `isBroadcast` reads: unmounting runs the page's cleanup (set false),
+	mounting runs its effect again (set true), and the layout swaps branches
+	again — an effect that reads and writes the same state, through two
+	components. Svelte aborts the graph with `effect_update_depth_exceeded`, and
+	from that moment nothing reactive updates at all: a shared match link sat on
+	"Loading the match…" forever, because the backstop and the EOSE signal both
+	fired into a dead effect graph.
+
+	One call site makes the flip an attribute change on elements that stay put,
+	and the page is mounted once.
+-->
+<div class={isBroadcast ? 'h-dvh w-screen overflow-hidden' : 'flex min-h-screen flex-col'}>
+	{#if !isBroadcast}
 		<Header />
-		<main class="flex-1">
-			{@render children()}
-		</main>
+	{/if}
+
+	<!-- `contents` so the broadcast view goes on laying out against the viewport,
+	     exactly as it did when there was no wrapper in its branch at all. -->
+	<main class={isBroadcast ? 'contents' : 'flex-1'}>
+		{@render children()}
+	</main>
+
+	{#if !isBroadcast}
 		<footer
 			class="border-t text-center"
 			style="border-color: var(--border-color); padding: 20px 0 24px; font-family: 'Barlow Condensed', system-ui, sans-serif; font-weight: 500; font-size: 16px; color: #6b7890;"
@@ -104,5 +124,5 @@
 				>
 			</p>
 		</footer>
-	</div>
-{/if}
+	{/if}
+</div>
