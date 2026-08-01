@@ -246,7 +246,7 @@ export const en = {
 	'error.backToScoreboard': 'Back to Scoreboard',
 
 	// ─── Page titles ────────────────────────────────────────────────────────
-	'title.home': '🥋 Choke Scoreboard',
+	'title.home': '🥋 Choke Scoreboard — live BJJ match scores',
 	'title.match': (f1: string, f2: string) => `${f1} vs ${f2} — Choke Scoreboard`,
 	'title.matchFallback': 'Match — Choke Scoreboard'
 } as const;

@@ -10,13 +10,49 @@
 		     once it boots. Do not move them into <svelte:head>: that would leave the
 		     static HTML with no description at all. -->
 		<meta name="description" content="BJJ Match Scoreboard - Real-time Brazilian Jiu-Jitsu scoring via Nostr" />
+
+		<!-- Every shared link is this same page with query params on it
+		     (/?npub=…&match=…), so they all consolidate here instead of being
+		     crawled as endless near-duplicates. -->
+		<link rel="canonical" href="https://bjjscore.live/" />
+		<meta name="theme-color" content="#0a0f1c" />
+
+		<!-- Social cards belong in this shell, not in <svelte:head>: link scrapers
+		     never run JavaScript, so a card emitted from a component would be
+		     invisible to every one of them. The URLs are absolute for the same
+		     reason — a scraper has no document to resolve a relative one against. -->
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="bjjscore.live" />
+		<meta property="og:title" content="Choke Scoreboard — live BJJ match scores" />
+		<meta
+			property="og:description"
+			content="Follow Brazilian Jiu-Jitsu matches as they happen. Scores stream from the Choke app straight to any screen — no account, nothing to install, just open the link."
+		/>
+		<meta property="og:url" content="https://bjjscore.live/" />
+		<meta property="og:image" content="https://bjjscore.live/og-bjjscore.png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content="Choke Scoreboard showing a live Brazilian Jiu-Jitsu match score" />
+		<meta property="og:locale" content="en_US" />
+		<meta property="og:locale:alternate" content="es_ES" />
+		<meta property="og:locale:alternate" content="pt_BR" />
+
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="Choke Scoreboard — live BJJ match scores" />
+		<meta
+			name="twitter:description"
+			content="Follow Brazilian Jiu-Jitsu matches as they happen. Scores stream from the Choke app straight to any screen."
+		/>
+		<meta name="twitter:image" content="https://bjjscore.live/og-bjjscore.png" />
+		<meta name="twitter:image:alt" content="Choke Scoreboard showing a live Brazilian Jiu-Jitsu match score" />
+
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
 			href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700;800&family=Chakra+Petch:wght@400;500;600;700&display=swap"
 			rel="stylesheet"
 		/>
-		<title>🥋 Choke Scoreboard</title>
+		<title>🥋 Choke Scoreboard — live BJJ match scores</title>
 		<!-- The theme, before anything paints.
 		     The app renders client-side, so this shell is all there is on screen
 		     until the bundle boots. Applying a saved light theme after that boots
@@ -37,6 +73,33 @@
 				console.warn('Could not read the saved theme:', err);
 			}
 		</script>
+		<!-- Static for the same reason as the cards above: a crawler that does not
+		     run our bundle still gets to know what this page is. -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "WebApplication",
+				"@id": "https://bjjscore.live/#app",
+				"name": "Choke Scoreboard",
+				"url": "https://bjjscore.live/",
+				"description": "Follow Brazilian Jiu-Jitsu matches as they happen. Scores stream from the Choke app straight to any screen — no account, nothing to install, just open the link.",
+				"applicationCategory": "SportsApplication",
+				"operatingSystem": "Any modern web browser",
+				"browserRequirements": "Requires JavaScript",
+				"inLanguage": ["en", "es", "pt"],
+				"isAccessibleForFree": true,
+				"license": "https://spdx.org/licenses/GPL-3.0-or-later.html",
+				"offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+				"author": {
+					"@type": "Organization",
+					"name": "ProtoLayer OÜ",
+					"url": "https://protolayer.io/"
+				},
+				"sameAs": ["https://github.com/protolayer-io/choke-scoreboard"],
+				"relatedLink": "https://protolayer.io/choke/"
+			}
+		</script>
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

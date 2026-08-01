@@ -163,7 +163,7 @@ export const pt = defineCatalog({
 	'error.backToScoreboard': 'Voltar ao placar',
 
 	// ─── Títulos ────────────────────────────────────────────────────────────
-	'title.home': '🥋 Choke Scoreboard',
+	'title.home': '🥋 Choke Scoreboard — placar de BJJ ao vivo',
 	'title.match': (f1: string, f2: string) => `${f1} vs ${f2} — Choke Scoreboard`,
 	'title.matchFallback': 'Luta — Choke Scoreboard'
 });
