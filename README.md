@@ -77,6 +77,19 @@ See the [docs/](./docs/) folder for detailed technical documentation.
 
 This project deploys automatically to GitHub Pages via GitHub Actions on push to `main`.
 
+## Origins
+
+This scoreboard is a rewrite of
+[bjj-scoreboard-floripa26](https://github.com/gotcha/bjj-scoreboard-floripa26) by
+[@gotcha](https://github.com/gotcha), built at
+[btc++ Floripa 2026](https://btcpp.dev/floripa26). Choke officially started there
+as a two-person hackathon team: gotcha took the scoreboard, and the
+[Choke](https://github.com/protolayer-io/choke) mobile scoring app was built
+alongside it.
+
+The code here was written from scratch, but the original scoreboard — and the
+idea of pairing it with the app over Nostr — is gotcha's. Thank you. 🙏
+
 ## License
 
 Copyright (C) 2026 ProtoLayer OÜ
